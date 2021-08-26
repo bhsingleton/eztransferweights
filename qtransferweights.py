@@ -225,7 +225,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         if numVertexIndices == 0:
 
-            vertexIndices = list(skin.range(skin.numControlPoints()))
+            vertexIndices = skin.vertices()
 
         # Define clipboard item
         #
