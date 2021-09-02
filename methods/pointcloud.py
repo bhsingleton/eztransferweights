@@ -48,7 +48,7 @@ class PointCloud(abstracttransfer.AbstractTransfer):
         # Remember we gotta convert our local indices back to global!
         #
         closestVertexIndices = [self.vertexMap[x] for x in closestIndices]
-        closestVertices = self.skin.weights(*closestVertexIndices)
+        closestVertices = self.skin.vertexWeights(*closestVertexIndices)
 
         updates = {vertexIndex: closestVertices[closestVertexIndex] for (vertexIndex, closestVertexIndex) in zip(vertexIndices, closestVertexIndices)}
 
@@ -56,7 +56,7 @@ class PointCloud(abstracttransfer.AbstractTransfer):
         #
         influenceMap = self.skin.createInfluenceMap(otherSkin, vertexIndices=self.vertexIndices)
 
-        updates = self.skin.remapWeights(updates, influenceMap)
-        otherSkin.applyWeights(updates)
+        updates = self.skin.remapVertexWeights(updates, influenceMap)
+        otherSkin.applyVertexWeights(updates)
 
         log.info('Finished transferring weights via point cloud!')

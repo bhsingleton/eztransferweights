@@ -59,7 +59,7 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
 
             point = points[vertexIndex]
 
-            vertices = self.skin.weights(*self.vertexIndices)
+            vertices = self.skin.vertexWeights(*self.vertexIndices)
             distances = [self.distanceBetween(point, self.points[x]) for x in self.vertexIndices]
 
             updates[vertexIndex] = self.skin.inverseDistanceVertexWeights(vertices, distances)
@@ -68,7 +68,7 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         #
         influenceMap = self.skin.createInfluenceMap(otherSkin, vertexIndices=self.vertexIndices)
 
-        updates = self.skin.remapWeights(updates, influenceMap)
-        otherSkin.applyWeights(updates)
+        updates = self.skin.remapVertexWeights(updates, influenceMap)
+        otherSkin.applyVertexWeights(updates)
 
         log.info('Finished transferring weights via inverse distance!')
