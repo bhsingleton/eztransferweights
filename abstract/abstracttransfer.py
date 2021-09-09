@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
-from dcc import fnskin
+from dcc import fnskin, fnmesh
 from dcc.decorators.classproperty import classproperty
 
 import logging
@@ -15,7 +15,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
     Abstract class used to outline transfer algorithms.
     """
 
-    __slots__ = ('_skin', '_vertexIndices')
+    __slots__ = ('_skin', '_mesh', '_vertexIndices')
 
     def __init__(self, *args, **kwargs):
         """
@@ -29,6 +29,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         # Declare private variables
         #
         self._skin = fnskin.FnSkin()
+        self._mesh = fnmesh.FnMesh()
         self._vertexIndices = []
 
         # Inspect arguments
@@ -48,6 +49,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
             # Assign complete list of vertices
             #
+            self._mesh.setObject(self._skin.intermediateObject())
             self._vertexIndices = range(self._skin.numControlPoints())
 
         elif numArgs == 2:
@@ -71,6 +73,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
             # Store vertex elements
             #
+            self._mesh.setObject(self._skin.intermediateObject())
             self._vertexIndices = vertexIndices
 
         else:
@@ -88,9 +91,19 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         return cls.__name__
 
     @property
+    def mesh(self):
+        """
+        Getter method that returns the mesh function set.
+
+        :rtype: fnmesh.FnMesh
+        """
+
+        return self._mesh
+
+    @property
     def skin(self):
         """
-        Method used to retrieve the associated skin cluster object.
+        Getter method that returns the skin function set.
 
         :rtype: fnskin.FnSkin
         """
@@ -100,7 +113,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
     @property
     def vertexIndices(self):
         """
-        Method used to retrieve the associated vertex indices.
+        Getter method that returns the cached vertex indices.
 
         :rtype: list[int]
         """

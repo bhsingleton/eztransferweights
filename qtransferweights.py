@@ -9,7 +9,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from dcc import fnskin
 from dcc.userinterface import qproxywindow, iconutils
 
-from .methods import pointcloud, inversedistance
+from .methods import pointcloud, inversedistance, pointonsurface
 
 import logging
 logging.basicConfig()
@@ -37,7 +37,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         # Declare private variables
         #
         self._clipboard = []
-        self._methods = [pointcloud.PointCloud, inversedistance.InverseDistance]
+        self._methods = [pointcloud.PointCloud, inversedistance.InverseDistance, pointonsurface.PointOnSurface]
 
         # Call parent method
         #

@@ -1,4 +1,5 @@
 from scipy.spatial import cKDTree
+
 from ..abstract import abstracttransfer
 
 import logging
@@ -26,7 +27,7 @@ class PointCloud(abstracttransfer.AbstractTransfer):
 
         # Declare private variables
         #
-        self.vertexMap = {localIndex: globalIndex for (localIndex, globalIndex) in enumerate(self.vertexIndices)}
+        self.vertexMap = dict(enumerate(self.vertexIndices))
         self.points = self.skin.controlPoints(*self.vertexIndices)
         self.tree = cKDTree(self.points)
 
