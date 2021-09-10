@@ -179,14 +179,41 @@ class QTransferWeights(qproxywindow.QProxyWindow):
     @property
     def clipboard(self):
         """
-        Getter method used to retrieve the clipboard items.
+        Getter method that returns the clipboard items.
 
         :rtype: list[ClipboardItem]
         """
 
         return self._clipboard
 
-    def selectedMethod(self):
+    @property
+    def clipboardCount(self):
+        """
+        Evaluates the number of clipboard items.
+
+        :rtype: int
+        """
+
+        return len(self._clipboard)
+
+    def currentClipboardItem(self):
+        """
+        Returns the current clipboard item.
+
+        :rtype: ClipboardItem
+        """
+
+        row = self.currentRow()
+
+        if 0 <= row < self.clipboardCount:
+
+            return self.clipboard[row]
+
+        else:
+
+            return None
+
+    def currentMethod(self):
         """
         Method used to retrieve the selected remapping algorithm.
 
@@ -195,7 +222,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         return self.methodComboBox.currentIndex()
 
-    def selectedRow(self):
+    def currentRow(self):
         """
         Method used to retrieve the selected row index.
 
@@ -203,6 +230,21 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         """
 
         return self.clipboardTableWidget.selectionModel().currentIndex().row()
+
+    def selectRow(self, row):
+        """
+        Selects the specified row from the clipboard table.
+
+        :type row: int
+        :rtype: None
+        """
+
+        # Check if table is empty
+        #
+        if self.clipboardCount > 0:
+
+            row = max(min(row, self.clipboardCount), 0)
+            self.clipboardTableWidget.selectRow(row)
 
     def addRow(self, skin):
         """
@@ -265,29 +307,27 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
     def invalidate(self):
         """
-        Invalidates the user interface.
-        This consists of repopulating the influence list.
+        Resets the influence list widget with the current clipboard item's used influences.
 
-        :rtype: bool
+        :rtype: None
         """
 
         # Clear all existing rows
         #
         self.influenceListWidget.clear()
 
-        # Get selected clipboard item
+        # Get current clipboard item
         #
-        selectedRow = self.selectedRow()
+        clipboardItem = self.currentClipboardItem()
 
-        if selectedRow is None:
+        if clipboardItem is None:
 
             return
 
-        clipboardItem = self._clipboard[selectedRow]
-        skin = clipboardItem.skin
-
         # Collect used influences
         #
+        skin = clipboardItem.skin
+
         influences = skin.influences()
         usedInfluenceIds = skin.getUsedInfluenceIds(*clipboardItem.selection)
 
@@ -327,13 +367,16 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         sender = self.sender()
         removeAt = self.clipboardTableWidget.indexAt(sender.pos()).row()
 
-        # Remove row from table
+        # Remove clipboard item
         #
+        self.clipboardTableWidget.clearSelection()
         self.clipboardTableWidget.removeRow(removeAt)
 
-        # Remove item from clipboard
-        #
         del self._clipboard[removeAt]
+
+        # Select next available clipboard item
+        #
+        self.selectRow(removeAt - 1)
 
     def extractWeights(self):
         """
@@ -389,18 +432,17 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         # Get selected row
         #
-        selectedRow = self.selectedRow()
-        selectedMethod = self.selectedMethod()
+        clipboardItem = self.currentClipboardItem()
 
-        if selectedRow is None or selectedMethod is None:
+        if clipboardItem is None:
 
             log.warning('Unable to apply weights using selected row!')
             return
 
         # Initialize transfer object
         #
-        clipboardItem = self._clipboard[selectedRow]
-        Transfer = self._methods[selectedMethod]
+        currentMethod = self.currentMethod()
+        cls = self._methods[currentMethod]
 
-        instance = Transfer(clipboardItem.skin.object(), clipboardItem.selection)
+        instance = cls(clipboardItem.skin.object(), clipboardItem.selection)
         return instance.transfer(otherSkin, otherSkin.selection())
