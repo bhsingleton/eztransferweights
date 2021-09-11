@@ -55,8 +55,8 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         for (vertexIndex, hit) in zip(vertexIndices, hits):
 
-            triangleVertexIndices = self.mesh.triangleVertexIndices(hit.hitIndex)
-            updates[vertexIndex] = self.skin.barycentricWeights(triangleVertexIndices[hit.hitIndex], hit.hitBary)
+            triangleVertexIndices = self.mesh.triangleVertexIndices(hit.hitIndex)[0]
+            updates[vertexIndex] = self.skin.barycentricWeights(triangleVertexIndices, hit.hitBary)
 
         # Remap source weights to target
         #
