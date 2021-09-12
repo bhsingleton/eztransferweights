@@ -1,5 +1,6 @@
 import math
 
+from itertools import chain
 from ..abstract import abstracttransfer
 
 import logging
@@ -62,11 +63,12 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
             vertices = self.skin.vertexWeights(*self.vertexIndices)
             distances = [self.distanceBetween(point, self.points[x]) for x in self.vertexIndices]
 
-            updates[vertexIndex] = self.skin.inverseDistanceVertexWeights(vertices, distances)
+            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertices, distances)
 
         # Remap source weights to target
         #
-        influenceMap = self.skin.createInfluenceMap(otherSkin, vertexIndices=self.vertexIndices)
+        influenceIds = set(chain(*[list(x.keys()) for x in updates.values()]))
+        influenceMap = self.skin.createInfluenceMap(otherSkin, influenceIds=influenceIds)
 
         updates = self.skin.remapVertexWeights(updates, influenceMap)
         otherSkin.applyVertexWeights(updates)

@@ -1,3 +1,5 @@
+from itertools import chain
+
 from ..abstract import abstracttransfer
 
 import logging
@@ -60,7 +62,8 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         # Remap source weights to target
         #
-        influenceMap = self.skin.createInfluenceMap(otherSkin, vertexIndices=self.vertexIndices)
+        influenceIds = set(chain(*[list(x.keys()) for x in updates.values()]))
+        influenceMap = self.skin.createInfluenceMap(otherSkin, influenceIds=influenceIds)
 
         updates = self.skin.remapVertexWeights(updates, influenceMap)
         otherSkin.applyVertexWeights(updates)
