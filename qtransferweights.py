@@ -305,6 +305,25 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         #
         self.clipboardTableWidget.selectRow(rowIndex)
 
+    def removeRow(self, row):
+        """
+        Removes the specified row from the table widget.
+
+        :type row: int
+        :rtype: None
+        """
+
+        # Remove clipboard item
+        #
+        self.clipboardTableWidget.clearSelection()
+        self.clipboardTableWidget.removeRow(row)
+
+        del self._clipboard[row]
+
+        # Select next available clipboard item
+        #
+        self.selectRow(row - 1)
+
     def invalidate(self):
         """
         Resets the influence list widget with the current clipboard item's used influences.
@@ -369,14 +388,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         # Remove clipboard item
         #
-        self.clipboardTableWidget.clearSelection()
-        self.clipboardTableWidget.removeRow(removeAt)
-
-        del self._clipboard[removeAt]
-
-        # Select next available clipboard item
-        #
-        self.selectRow(removeAt - 1)
+        self.removeRow(removeAt)
 
     def extractWeights(self):
         """
