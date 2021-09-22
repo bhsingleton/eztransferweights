@@ -50,13 +50,14 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         :rtype: None
         """
 
-        # Define window properties
+        # Call parent method
+        #
+        super(QTransferWeights, self).__build__()
+
+        # Edit window properties
         #
         self.setWindowTitle('|| Transfer Weights')
         self.setMinimumSize(QtCore.QSize(500, 250))
-
-        # Create central widget
-        #
         self.setCentralWidget(QtWidgets.QWidget())
         self.centralWidget().setLayout(QtWidgets.QVBoxLayout())
 
