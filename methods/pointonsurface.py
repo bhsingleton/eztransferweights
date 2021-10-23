@@ -27,7 +27,7 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         # Convert vertex indices to polygons
         #
-        self._faceIndices = list(self.mesh.iterConnectedFaces(*self.vertexIndices))
+        self._faceIndices = set(self.mesh.iterConnectedFaces(*self.vertexIndices))
 
     @property
     def faceIndices(self):
@@ -51,7 +51,7 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
         # Assign mesh to function set
         #
         points = otherSkin.controlPoints(*vertexIndices)
-        hits = self.mesh.closestPointsOnSurface(points, self._faceIndices)
+        hits = self.mesh.closestPointsOnSurface(points, faceIndices=self._faceIndices)
 
         updates = {}
 
