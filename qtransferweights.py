@@ -7,7 +7,7 @@ from time import gmtime, strftime
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from dcc import fnskin
-from dcc.userinterface import qproxywindow, iconutils
+from dcc.userinterface import qproxywindow, qiconlibrary
 
 from .methods import pointcloud, inversedistance, pointonsurface
 
@@ -284,7 +284,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         # Create trash button
         #
         item4 = QtWidgets.QPushButton()
-        item4.setIcon(iconutils.getIconByName('delete'))
+        item4.setIcon(qiconlibrary.getIconByName('delete'))
         item4.clicked.connect(self.trash)
 
         # Parent items to cells
