@@ -25,8 +25,6 @@ class QTransferWeights(qproxywindow.QProxyWindow):
     Overload of QProxyWindow used for transferring skin weights between different meshes.
     """
 
-    __title__ = 'Transfer Weights'
-
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
@@ -58,6 +56,7 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         # Edit window properties
         #
+        self.setWindowTitle('Transfer Weights')
         self.setMinimumSize(QtCore.QSize(500, 250))
         self.setCentralWidget(QtWidgets.QWidget())
         self.centralWidget().setLayout(QtWidgets.QVBoxLayout())
