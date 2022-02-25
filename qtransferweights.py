@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from collections import namedtuple
-from dcc import fnskin
+from dcc import fnnode, fnskin
 from dcc.userinterface import quicwindow, qiconlibrary
 from transferweights.methods import pointcloud, inversedistance, pointonsurface
 
@@ -15,7 +15,7 @@ ClipboardItem = namedtuple('ClipboardItem', ('skin', 'selection'))
 
 class QTransferWeights(quicwindow.QUicWindow):
     """
-    Overload of QProxyWindow used for transferring skin weights between different meshes.
+    Overload of QUicWindow used for transferring skin weights between different meshes.
     """
 
     # region Dunderscores
@@ -56,8 +56,22 @@ class QTransferWeights(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
+    def postLoad(self):
+        """
+        Called after the user interface has been loaded.
+
+        :rtype: None
+        """
+
+        self.clipboardTableWidget.setColumnWidth(2, 40)
+
+        horizontalHeader = self.clipboardTableWidget.horizontalHeader()
+        horizontalHeader.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader.setStretchLastSection(False)
+        horizontalHeader.setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+
     @classmethod
-    def createTableWidgetItem(cls, text, height=16):
+    def createTableWidgetItem(cls, text, height=24):
         """
         Method used to create a table widget item from the supplied text value.
 
@@ -77,7 +91,7 @@ class QTransferWeights(quicwindow.QUicWindow):
         return item
 
     @classmethod
-    def createListWidgetItem(cls, text, height=16):
+    def createListWidgetItem(cls, text, height=24):
         """
         Convenience function for quickly creating QStandardItems.
 
@@ -149,13 +163,10 @@ class QTransferWeights(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Check if table is empty
-        #
-        clipboardCount = self.clipboardCount()
+        rowCount = self.clipboardTableWidget.rowCount()
 
-        if clipboardCount > 0:
+        if 0 <= row < rowCount:
 
-            row = max(min(row, clipboardCount), 0)
             self.clipboardTableWidget.selectRow(row)
 
     def addRow(self, skin):
@@ -166,11 +177,11 @@ class QTransferWeights(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Check value type
+        # Check if skin is valid
         #
         if not skin.isValid():
 
-            raise TypeError('addRow() expects a valid skin!')
+            raise TypeError('addRow() expects a valid skin deformer!')
 
         # Get active selection
         #
@@ -188,13 +199,12 @@ class QTransferWeights(quicwindow.QUicWindow):
 
         # Create standard items
         #
-        item1 = self.createTableWidgetItem('%s' % skin.name())
+        fnShape = fnnode.FnNode(skin.shape())
+
+        item1 = self.createTableWidgetItem('%s' % fnShape.name())
         item2 = self.createTableWidgetItem('%s' % len(vertexIndices))
 
-        # Create delete button
-        #
-        item3 = QtWidgets.QPushButton()
-        item3.setIcon(qiconlibrary.getIconByName('delete'))
+        item3 = QtWidgets.QPushButton(qiconlibrary.getIconByName('delete'), '')
         item3.clicked.connect(self.on_deletePushButton_clicked)
 
         # Parent items to cells
@@ -273,8 +283,9 @@ class QTransferWeights(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_deletePushButton_clicked(self, checked=False):
         """
-        Slot method called whenever the user clicks the trash button.
+        Clicked slot method responsible for deleting the associated row.
 
+        :type checked: bool
         :rtype: None
         """
 
@@ -287,44 +298,60 @@ class QTransferWeights(quicwindow.QUicWindow):
         #
         self.removeRow(removeAt)
 
-    @QtCore.Slot(QtWidgets.QTableWidgetItem)
-    def on_clipboardTableWidget_itemClicked(self, item):
-
-        self.invalidate()
-
-    @QtCore.Slot(bool)
-    def on_extractPushButton_clicked(self, checked=False):
+    @QtCore.Slot()
+    def on_clipboardTableWidget_itemSelectionChanged(self):
         """
-        Commits the selected mesh to the clipboard.
+        Item selection changed slot method responsible for invalidating the influence list.
 
         :rtype: None
         """
 
-        # Get active selection
+        self.invalidate()
+
+    @QtCore.Slot(bool)
+    def on_createPushButton_clicked(self, checked=False):
+        """
+        Clicked slot method responsible for creating a skin deformer from the current influences.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        log.info('Coming soon!')
+
+    @QtCore.Slot(bool)
+    def on_extractPushButton_clicked(self, checked=False):
+        """
+        Clicked slot method responsible for extracting skin weights from the active selection.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        # Add active selection
         #
-        fnSkin = fnskin.FnSkin()
-        selection = fnskin.FnSkin.getActiveSelection()
+        skin = fnskin.FnSkin()
+        selection = skin.getActiveSelection()
 
         for obj in selection:
 
-            # Try and initialize function set
-            #
-            success = fnSkin.trySetObject(obj)
+            success = skin.trySetObject(obj)
 
-            if not success:
+            if success:
+
+                self.addRow(skin)
+
+            else:
 
                 continue
-
-            # Append row using skin
-            #
-            self.addRow(fnSkin)
 
     @QtCore.Slot(bool)
     def on_transferPushButton_clicked(self, checked=False):
         """
-        Method used to apply the selected clipboard item to the active selection.
+        Clicked slot method responsible for applying the selected weights to the active selection.
 
-        :rtype: bool
+        :type checked: bool
+        :rtype: None
         """
 
         # Get active selection
@@ -360,6 +387,6 @@ class QTransferWeights(quicwindow.QUicWindow):
         currentMethod = self.currentMethod()
         cls = self._methods[currentMethod]
 
-        instance = cls(clipboardItem.skin.object(), clipboardItem.selection)
+        instance = cls(clipboardItem.skin, clipboardItem.selection)
         return instance.transfer(otherSkin, otherSkin.selection())
     # endregion

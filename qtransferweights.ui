@@ -51,6 +51,9 @@
        <layout class="QVBoxLayout" name="clipboardLayout">
         <item>
          <widget class="QTableWidget" name="clipboardTableWidget">
+          <property name="styleSheet">
+           <string notr="true">QTableWidgetItem { height: 24px; }</string>
+          </property>
           <property name="horizontalScrollBarPolicy">
            <enum>Qt::ScrollBarAlwaysOff</enum>
           </property>
@@ -80,6 +83,11 @@
           <column>
            <property name="text">
             <string>Points</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string/>
            </property>
           </column>
          </widget>
@@ -171,6 +179,9 @@
        <layout class="QVBoxLayout" name="influenceLayout">
         <item>
          <widget class="QListWidget" name="influenceListWidget">
+          <property name="styleSheet">
+           <string notr="true">QListWidgetItem { height: 24px; }</string>
+          </property>
           <property name="horizontalScrollBarPolicy">
            <enum>Qt::ScrollBarAlwaysOff</enum>
           </property>
