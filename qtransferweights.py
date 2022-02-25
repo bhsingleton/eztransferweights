@@ -1,15 +1,8 @@
-"""
-Tool used for transferring weights between meshes using xml.
-Using Python API 2.0.
-"""
-from collections import namedtuple
-from time import gmtime, strftime
 from PySide2 import QtCore, QtWidgets, QtGui
-
+from collections import namedtuple
 from dcc import fnskin
-from dcc.userinterface import qproxywindow, qiconlibrary
-
-from .methods import pointcloud, inversedistance, pointonsurface
+from dcc.userinterface import quicwindow, qiconlibrary
+from transferweights.methods import pointcloud, inversedistance, pointonsurface
 
 import logging
 logging.basicConfig()
@@ -20,11 +13,12 @@ log.setLevel(logging.INFO)
 ClipboardItem = namedtuple('ClipboardItem', ('skin', 'selection'))
 
 
-class QTransferWeights(qproxywindow.QProxyWindow):
+class QTransferWeights(quicwindow.QUicWindow):
     """
     Overload of QProxyWindow used for transferring skin weights between different meshes.
     """
 
+    # region Dunderscores
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
@@ -34,109 +28,34 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         :rtype: None
         """
 
-        # Declare private variables
-        #
-        self._clipboard = []
-        self._methods = [pointcloud.PointCloud, inversedistance.InverseDistance, pointonsurface.PointOnSurface]
-
         # Call parent method
         #
         super(QTransferWeights, self).__init__(*args, **kwargs)
 
-    def __build__(self, **kwargs):
+        # Declare private variables
+        #
+        self._clipboard = []
+
+        self._methods = [
+            pointcloud.PointCloud,
+            inversedistance.InverseDistance,
+            pointonsurface.PointOnSurface
+        ]
+    # endregion
+
+    # region Properties
+    @property
+    def clipboard(self):
         """
-        Private method used to build the user interface.
+        Getter method that returns the clipboard items.
 
-        :rtype: None
+        :rtype: list[ClipboardItem]
         """
 
-        # Call parent method
-        #
-        super(QTransferWeights, self).__build__(**kwargs)
+        return self._clipboard
+    # endregion
 
-        # Edit window properties
-        #
-        self.setWindowTitle('Transfer Weights')
-        self.setMinimumSize(QtCore.QSize(500, 250))
-        self.setCentralWidget(QtWidgets.QWidget())
-        self.centralWidget().setLayout(QtWidgets.QVBoxLayout())
-
-        # Define main layout
-        #
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        self.centralWidget().layout().addWidget(self.splitter)
-
-        # Create weights table widget
-        #
-        self.clipboardLayout = QtWidgets.QVBoxLayout()
-
-        self.clipboardGroupBox = QtWidgets.QGroupBox('Clipboard:')
-        self.clipboardGroupBox.setLayout(self.clipboardLayout)
-
-        self.clipboardTableWidget = QtWidgets.QTableWidget()
-        self.clipboardTableWidget.setShowGrid(True)
-        self.clipboardTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.clipboardTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.clipboardTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.clipboardTableWidget.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.clipboardTableWidget.setColumnCount(4)
-        self.clipboardTableWidget.setHorizontalHeaderLabels(['Name', 'Points', 'Date', ''])
-        self.clipboardTableWidget.selectionModel().selectionChanged.connect(self.selectionChanged)
-        self.clipboardTableWidget.setColumnWidth(3, 40)
-        self.clipboardTableWidget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Fixed)
-        self.clipboardTableWidget.horizontalHeader().setStretchLastSection(False)
-        self.clipboardTableWidget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
-
-        self.clipboardLayout.addWidget(self.clipboardTableWidget)
-
-        self.splitter.addWidget(self.clipboardGroupBox)
-
-        # Create method widgets
-        #
-        self.methodLayout = QtWidgets.QHBoxLayout()
-
-        self.methodLabel = QtWidgets.QLabel('Method:')
-        self.methodLabel.setFixedWidth(48)
-        self.methodLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
-        self.methodComboBox = QtWidgets.QComboBox()
-        self.methodComboBox.addItems([x.className for x in self._methods])
-
-        self.methodLayout.addWidget(self.methodLabel)
-        self.methodLayout.addWidget(self.methodComboBox)
-
-        self.clipboardLayout.addLayout(self.methodLayout)
-
-        # Create influences table widget
-        #
-        self.influenceLayout = QtWidgets.QVBoxLayout()
-
-        self.influenceGroupBox = QtWidgets.QGroupBox('Influences:')
-        self.influenceGroupBox.setLayout(self.influenceLayout)
-
-        self.influenceListWidget = QtWidgets.QListWidget()
-        self.influenceListWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.influenceListWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-
-        self.influenceLayout.addWidget(self.influenceListWidget)
-
-        self.splitter.addWidget(self.influenceGroupBox)
-
-        # Create buttons row
-        #
-        self.buttonLayout = QtWidgets.QHBoxLayout()
-
-        self.extractButton = QtWidgets.QPushButton('Extract')
-        self.extractButton.pressed.connect(self.extractWeights)
-
-        self.applyBtn = QtWidgets.QPushButton('Apply')
-        self.applyBtn.pressed.connect(self.applyWeights)
-
-        self.buttonLayout.addWidget(self.extractButton)
-        self.buttonLayout.addWidget(self.applyBtn)
-
-        self.centralWidget().layout().addLayout(self.buttonLayout)
-
+    # region Methods
     @classmethod
     def createTableWidgetItem(cls, text, height=16):
         """
@@ -177,17 +96,6 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         return item
 
-    @property
-    def clipboard(self):
-        """
-        Getter method that returns the clipboard items.
-
-        :rtype: list[ClipboardItem]
-        """
-
-        return self._clipboard
-
-    @property
     def clipboardCount(self):
         """
         Evaluates the number of clipboard items.
@@ -205,8 +113,9 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         """
 
         row = self.currentRow()
+        clipboardCount = self.clipboardCount()
 
-        if 0 <= row < self.clipboardCount:
+        if 0 <= row < clipboardCount:
 
             return self.clipboard[row]
 
@@ -242,9 +151,11 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         # Check if table is empty
         #
-        if self.clipboardCount > 0:
+        clipboardCount = self.clipboardCount()
 
-            row = max(min(row, self.clipboardCount), 0)
+        if clipboardCount > 0:
+
+            row = max(min(row, clipboardCount), 0)
             self.clipboardTableWidget.selectRow(row)
 
     def addRow(self, skin):
@@ -279,31 +190,24 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         #
         item1 = self.createTableWidgetItem('%s' % skin.name())
         item2 = self.createTableWidgetItem('%s' % len(vertexIndices))
-        item3 = self.createTableWidgetItem('%s' % strftime("%Y-%m-%d %H:%M:%S", gmtime()))
 
-        # Create trash button
+        # Create delete button
         #
-        item4 = QtWidgets.QPushButton()
-        item4.setIcon(qiconlibrary.getIconByName('delete'))
-        item4.clicked.connect(self.trash)
+        item3 = QtWidgets.QPushButton()
+        item3.setIcon(qiconlibrary.getIconByName('delete'))
+        item3.clicked.connect(self.on_deletePushButton_clicked)
 
         # Parent items to cells
         #
         rowIndex = self.clipboardTableWidget.rowCount()
         self.clipboardTableWidget.insertRow(rowIndex)
-
         self.clipboardTableWidget.setItem(rowIndex, 0, item1)
         self.clipboardTableWidget.setItem(rowIndex, 1, item2)
-        self.clipboardTableWidget.setItem(rowIndex, 2, item3)
-        self.clipboardTableWidget.setCellWidget(rowIndex, 3, item4)
+        self.clipboardTableWidget.setCellWidget(rowIndex, 2, item3)
 
-        # Resize columns
+        # Resize columns and select row
         #
         self.clipboardTableWidget.resizeColumnToContents(0)
-        self.clipboardTableWidget.resizeColumnToContents(1)
-
-        # Select new row
-        #
         self.clipboardTableWidget.selectRow(rowIndex)
 
     def removeRow(self, row):
@@ -363,19 +267,11 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         # Set selection to first item
         #
         self.influenceListWidget.setCurrentRow(0)
+    # endregion
 
-    def selectionChanged(self, selected, deselected):
-        """
-        Trigger method used to update the influences list.
-
-        :type selected: QtCore.QItemSelection
-        :type deselected: QtCore.QItemSelection
-        :rtype: None
-        """
-
-        self.invalidate()
-
-    def trash(self):
+    # region Slots
+    @QtCore.Slot(bool)
+    def on_deletePushButton_clicked(self, checked=False):
         """
         Slot method called whenever the user clicks the trash button.
 
@@ -391,7 +287,13 @@ class QTransferWeights(qproxywindow.QProxyWindow):
         #
         self.removeRow(removeAt)
 
-    def extractWeights(self):
+    @QtCore.Slot(QtWidgets.QTableWidgetItem)
+    def on_clipboardTableWidget_itemClicked(self, item):
+
+        self.invalidate()
+
+    @QtCore.Slot(bool)
+    def on_extractPushButton_clicked(self, checked=False):
         """
         Commits the selected mesh to the clipboard.
 
@@ -417,7 +319,8 @@ class QTransferWeights(qproxywindow.QProxyWindow):
             #
             self.addRow(fnSkin)
 
-    def applyWeights(self):
+    @QtCore.Slot(bool)
+    def on_transferPushButton_clicked(self, checked=False):
         """
         Method used to apply the selected clipboard item to the active selection.
 
@@ -459,3 +362,4 @@ class QTransferWeights(qproxywindow.QProxyWindow):
 
         instance = cls(clipboardItem.skin.object(), clipboardItem.selection)
         return instance.transfer(otherSkin, otherSkin.selection())
+    # endregion
