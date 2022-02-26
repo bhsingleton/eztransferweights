@@ -52,7 +52,7 @@
         <item>
          <widget class="QTableWidget" name="clipboardTableWidget">
           <property name="styleSheet">
-           <string notr="true">QTableWidgetItem { height: 24px; }</string>
+           <string notr="true">QTableWidget::item { height: 24px; }</string>
           </property>
           <property name="horizontalScrollBarPolicy">
            <enum>Qt::ScrollBarAlwaysOff</enum>
@@ -180,7 +180,7 @@
         <item>
          <widget class="QListWidget" name="influenceListWidget">
           <property name="styleSheet">
-           <string notr="true">QListWidgetItem { height: 24px; }</string>
+           <string notr="true">QListWidget::item { height: 24px; }</string>
           </property>
           <property name="horizontalScrollBarPolicy">
            <enum>Qt::ScrollBarAlwaysOff</enum>
