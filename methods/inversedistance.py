@@ -1,7 +1,7 @@
 import math
 
 from itertools import chain
-from ..abstract import abstracttransfer
+from eztransferweights.abstract import abstracttransfer
 
 import logging
 logging.basicConfig()

@@ -2,7 +2,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnnode, fnskin
 from dcc.userinterface import quicwindow, qiconlibrary
-from transferweights.methods import pointcloud, inversedistance, pointonsurface
+from eztransferweights.methods import pointcloud, inversedistance, pointonsurface
 
 import logging
 logging.basicConfig()
@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 ClipboardItem = namedtuple('ClipboardItem', ('skin', 'selection'))
 
 
-class QTransferWeights(quicwindow.QUicWindow):
+class QEzTransferWeights(quicwindow.QUicWindow):
     """
     Overload of QUicWindow used for transferring skin weights between different meshes.
     """
@@ -30,7 +30,7 @@ class QTransferWeights(quicwindow.QUicWindow):
 
         # Call parent method
         #
-        super(QTransferWeights, self).__init__(*args, **kwargs)
+        super(QEzTransferWeights, self).__init__(*args, **kwargs)
 
         # Declare private variables
         #
