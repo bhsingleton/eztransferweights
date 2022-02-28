@@ -1,7 +1,7 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnnode, fnskin
-from dcc.userinterface import quicwindow, qiconlibrary
+from dcc.ui import quicwindow, qiconlibrary
 from eztransferweights.methods import pointcloud, inversedistance, pointonsurface
 
 import logging
