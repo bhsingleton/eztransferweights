@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Ez Transfer Weights</string>
+   <string>|| Ez Transfer Weights</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -194,6 +194,9 @@
           <property name="selectionBehavior">
            <enum>QAbstractItemView::SelectRows</enum>
           </property>
+          <property name="viewMode">
+           <enum>QListView::ListMode</enum>
+          </property>
           <property name="uniformItemSizes">
            <bool>true</bool>
           </property>
@@ -288,6 +291,8 @@
    </layout>
   </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="../dcc/ui/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
