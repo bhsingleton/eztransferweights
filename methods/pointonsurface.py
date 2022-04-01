@@ -1,6 +1,7 @@
 from itertools import chain
 
-from ..abstract import abstracttransfer
+from dcc import fnmesh
+from eztransferweights.abstract import abstracttransfer
 
 import logging
 logging.basicConfig()
@@ -14,7 +15,8 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
     This mesh is then used to perform barycentric/bilinear averaging.
     """
 
-    __slots__ = ('_faceIndices',)
+    # region Dunderscores
+    __slots__ = ('_triMesh', '_faceIndices',)
 
     def __init__(self, *args, **kwargs):
         """
@@ -27,18 +29,33 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         # Convert vertex indices to polygons
         #
+        self._triMesh = fnmesh.FnMesh(self.mesh.triMesh())
         self._faceIndices = set(self.mesh.iterConnectedFaces(*self.vertexIndices))
+    # endregion
+
+    # region Properties
+    @property
+    def triMesh(self):
+        """
+        Getter method that returns the tri-mesh function set.
+
+        :rtype: fnmesh.FnMesh
+        """
+
+        return self._triMesh
 
     @property
     def faceIndices(self):
         """
         Getter method that returns the cached face indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return self._faceIndices
+    # endregion
 
+    # region Methods
     def transfer(self, otherSkin, vertexIndices):
         """
         Transfers the weights from this object to the supplied skin.
@@ -57,7 +74,7 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         for (vertexIndex, hit) in zip(vertexIndices, hits):
 
-            triangleVertexIndices = self.mesh.triangleVertexIndices(hit.hitIndex)[0]
+            triangleVertexIndices = self.triMesh.faceVertexIndices(hit.hitIndex)[0]
             updates[vertexIndex] = self.skin.barycentricWeights(triangleVertexIndices, hit.hitBary)
 
         # Remap source weights to target
@@ -69,3 +86,4 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
         otherSkin.applyVertexWeights(updates)
 
         log.info('Finished transferring weights via point on surface!')
+    # endregion

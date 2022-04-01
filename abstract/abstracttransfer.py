@@ -12,14 +12,17 @@ log.setLevel(logging.INFO)
 
 class AbstractTransfer(with_metaclass(ABCMeta, object)):
     """
-    Abstract class used to outline transfer algorithms.
+    Abstract base class that outlines weight transfer behavior.
     """
 
+    # region Dunderscores
     __slots__ = ('_skin', '_mesh', '_vertexIndices')
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
+
+        :rtype: None
         """
 
         # Call parent method
@@ -38,48 +41,50 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
         if numArgs == 1:
 
-            # Try and initialize function set
+            # Inspect skin type
             #
             skin = args[0]
-            success = self._skin.trySetObject(skin)
 
-            if not success:
+            if not isinstance(skin, fnskin.FnSkin):
 
                 raise TypeError('%s() expects a valid skin!' % self.className)
 
-            # Assign complete list of vertices
+            # Store all vertex elements
             #
+            self._skin = args[0]
             self._mesh.setObject(self._skin.intermediateObject())
-            self._vertexIndices = range(self._skin.numControlPoints())
+            self._vertexIndices = list(range(self._skin.numControlPoints()))
 
         elif numArgs == 2:
 
-            # Try and initialize function set
+            # Inspect skin type
             #
             skin = args[0]
-            success = self._skin.trySetObject(skin)
 
-            if not success:
+            if not isinstance(skin, fnskin.FnSkin):
 
                 raise TypeError('%s() expects a valid skin!' % self.className)
 
-            # Check vertex elements type
+            # Inspect vertex elements type
             #
             vertexIndices = args[1]
 
             if not isinstance(vertexIndices, (list, tuple, set)):
 
-                raise TypeError('%s() expects a list (%s given)!' % (self.className, type(vertexIndices).__name__))
+                raise TypeError('%s() expects a valid list (%s given)!' % (self.className, type(vertexIndices).__name__))
 
             # Store vertex elements
             #
+            self._skin = skin
             self._mesh.setObject(self._skin.intermediateObject())
             self._vertexIndices = vertexIndices
 
         else:
 
             raise TypeError('TransferWeights() expects 1 or 2 arguments (%s given)!' % numArgs)
+    # endregion
 
+    # region Properties
     @classproperty
     def className(cls):
         """
@@ -115,19 +120,22 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         """
         Getter method that returns the cached vertex indices.
 
-        :rtype: list[int]
+        :rtype: List[int]
         """
 
         return self._vertexIndices
+    # endregion
 
+    # region Methods
     @abstractmethod
     def transfer(self, otherSkin, vertexIndices):
         """
         Transfers the weights from this object to the supplied skin.
 
         :type otherSkin: fnskin.FnSkin
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :rtype: None
         """
 
         pass
+    # endregion

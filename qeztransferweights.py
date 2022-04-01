@@ -1,7 +1,7 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 from collections import namedtuple
-from dcc import fnnode, fnskin
-from dcc.ui import quicwindow, qiconlibrary
+from dcc import fnscene, fnnode, fnskin
+from dcc.ui import quicwindow
 from eztransferweights.methods import pointcloud, inversedistance, pointonsurface
 
 import logging
@@ -34,6 +34,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Declare private variables
         #
+        self._scene = fnscene.FnScene()
         self._clipboard = []
 
         self._methods = [
@@ -45,11 +46,21 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
     # region Properties
     @property
+    def scene(self):
+        """
+        Getter method that returns the scene function set.
+
+        :rtype: fnscene.FnScene
+        """
+
+        return self._scene
+
+    @property
     def clipboard(self):
         """
         Getter method that returns the clipboard items.
 
-        :rtype: list[ClipboardItem]
+        :rtype: List[ClipboardItem]
         """
 
         return self._clipboard
@@ -63,49 +74,40 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        self.clipboardTableWidget.setColumnWidth(2, 40)
-
-        horizontalHeader = self.clipboardTableWidget.horizontalHeader()
-        horizontalHeader.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader = self.clipboardTableWidget.horizontalHeader()  # type: QtWidgets.QHeaderView
         horizontalHeader.setStretchLastSection(False)
-        horizontalHeader.setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        horizontalHeader.resizeSection(2, 24)
+        horizontalHeader.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader.resizeSection(1, 100)
+        horizontalHeader.setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
 
-    @classmethod
-    def createTableWidgetItem(cls, text, height=24):
+        verticalHeader = self.clipboardTableWidget.verticalHeader()  # type: QtWidgets.QHeaderView
+        verticalHeader.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        verticalHeader.setDefaultSectionSize(24)
+
+    def createTableWidgetItem(self, text):
         """
         Method used to create a table widget item from the supplied text value.
 
         :type text: str
-        :type height: int
         :rtype: QtGui.QStandardItem
         """
 
-        # Create item and resize based on text width
-        #
         item = QtWidgets.QTableWidgetItem(text)
-        textWidth = cls.getTextWidth(item, text)
-
-        item.setSizeHint(QtCore.QSize(textWidth, height))
         item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
         return item
 
-    @classmethod
-    def createListWidgetItem(cls, text, height=24):
+    def createListWidgetItem(self, text):
         """
         Convenience function for quickly creating QStandardItems.
 
         :type text: str
-        :type height: int
         :rtype: QtGui.QStandardItem
         """
 
-        # Create item and resize based on text width
-        #
         item = QtWidgets.QListWidgetItem(text)
-        textWidth = cls.getTextWidth(item, text)
-
-        item.setSizeHint(QtCore.QSize(textWidth, height))
         item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
 
         return item
@@ -201,10 +203,11 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         #
         fnShape = fnnode.FnNode(skin.shape())
 
-        item1 = self.createTableWidgetItem('%s' % fnShape.name())
-        item2 = self.createTableWidgetItem('%s' % len(vertexIndices))
+        item1 = self.createTableWidgetItem(fnShape.name())
+        item2 = self.createTableWidgetItem(str(len(vertexIndices)))
 
-        item3 = QtWidgets.QPushButton(qiconlibrary.getIconByName('delete'), '')
+        item3 = QtWidgets.QPushButton(QtGui.QIcon(':dcc/icons/delete.svg'), '')
+        item3.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         item3.clicked.connect(self.on_deletePushButton_clicked)
 
         # Parent items to cells
@@ -217,7 +220,6 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Resize columns and select row
         #
-        self.clipboardTableWidget.resizeColumnToContents(0)
         self.clipboardTableWidget.selectRow(rowIndex)
 
     def removeRow(self, row):
@@ -330,8 +332,8 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Add active selection
         #
+        selection = self.scene.getActiveSelection()
         skin = fnskin.FnSkin()
-        selection = skin.getActiveSelection()
 
         for obj in selection:
 
@@ -356,7 +358,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Get active selection
         #
-        selection = fnskin.FnSkin.getActiveSelection()
+        selection = self.scene.getActiveSelection()
         selectionCount = len(selection)
 
         if selectionCount != 1:
