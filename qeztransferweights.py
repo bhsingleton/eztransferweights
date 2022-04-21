@@ -1,8 +1,8 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from Qt import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnscene, fnnode, fnskin
 from dcc.ui import quicwindow
-from eztransferweights.methods import pointcloud, inversedistance, pointonsurface
+from .methods import pointcloud, inversedistance, pointonsurface
 
 import logging
 logging.basicConfig()
