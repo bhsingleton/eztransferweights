@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-
 from dcc import fnskin, fnmesh
 from dcc.decorators.classproperty import classproperty
 
@@ -16,12 +15,14 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
     """
 
     # region Dunderscores
-    __slots__ = ('_skin', '_mesh', '_vertexIndices')
+    __slots__ = ('_mesh', '_skin', '_vertexIndices', '_vertexMap')
+    __title__ = ''
 
     def __init__(self, *args, **kwargs):
         """
         Private method called after a new instance has been created.
 
+        :type args: Union[Tuple[fnskin.FnSkin], Tuple[fnskin.FnSkin, List[int]]]
         :rtype: None
         """
 
@@ -31,9 +32,10 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
         # Declare private variables
         #
-        self._skin = fnskin.FnSkin()
-        self._mesh = fnmesh.FnMesh()
+        self._skin = None
+        self._mesh = None
         self._vertexIndices = []
+        self._vertexMap = {}
 
         # Inspect arguments
         #
@@ -47,13 +49,14 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
             if not isinstance(skin, fnskin.FnSkin):
 
-                raise TypeError('%s() expects a valid skin!' % self.className)
+                raise TypeError('%s() expects a valid skin (%s given)!' % (self.className, type(skin).__name__))
 
             # Store all vertex elements
             #
-            self._skin = args[0]
-            self._mesh.setObject(self._skin.intermediateObject())
-            self._vertexIndices = list(range(self._skin.numControlPoints()))
+            self._skin = skin
+            self._mesh = fnmesh.FnMesh(self.skin.intermediateObject())
+            self._vertexIndices = list(range(self.skin.numControlPoints()))
+            self._vertexMap = dict(enumerate(self._vertexIndices))
 
         elif numArgs == 2:
 
@@ -63,7 +66,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
             if not isinstance(skin, fnskin.FnSkin):
 
-                raise TypeError('%s() expects a valid skin!' % self.className)
+                raise TypeError('%s() expects a valid skin (%s given)!' % (self.className, type(skin).__name__))
 
             # Inspect vertex elements type
             #
@@ -76,8 +79,9 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
             # Store vertex elements
             #
             self._skin = skin
-            self._mesh.setObject(self._skin.intermediateObject())
+            self._mesh = fnmesh.FnMesh(self._skin.intermediateObject())
             self._vertexIndices = vertexIndices
+            self._vertexMap = dict(enumerate(self._vertexIndices))
 
         else:
 
@@ -95,15 +99,15 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
         return cls.__name__
 
-    @property
-    def mesh(self):
+    @classproperty
+    def title(cls):
         """
-        Getter method that returns the mesh function set.
+        Getter method that returns the name of this class.
 
-        :rtype: fnmesh.FnMesh
+        :rtype: str
         """
 
-        return self._mesh
+        return cls.__title__
 
     @property
     def skin(self):
@@ -116,11 +120,31 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         return self._skin
 
     @property
+    def mesh(self):
+        """
+        Getter method that returns the mesh function set.
+
+        :rtype: fnmesh.FnMesh
+        """
+
+        return self._mesh
+
+    @property
     def vertexIndices(self):
         """
-        Getter method that returns the cached vertex indices.
+        Getter method that returns the vertex index dataset.
 
         :rtype: List[int]
+        """
+
+        return self._vertexIndices
+
+    @property
+    def vertexMap(self):
+        """
+        Getter method that returns the vertex local to global map.
+
+        :rtype: Dict[int, int]
         """
 
         return self._vertexIndices
@@ -130,7 +154,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def transfer(self, otherSkin, vertexIndices):
         """
-        Transfers the weights from this object to the supplied skin.
+        Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]

@@ -1,7 +1,5 @@
 from itertools import chain
-
-from dcc import fnmesh
-from eztransferweights.abstract import abstracttransfer
+from . import abstracttransfer
 
 import logging
 logging.basicConfig()
@@ -11,39 +9,31 @@ log.setLevel(logging.INFO)
 
 class PointOnSurface(abstracttransfer.AbstractTransfer):
     """
-    Overload of TransferWeights that takes a skin weights object and extracts geometry based on vertex indices.
-    This mesh is then used to perform barycentric/bilinear averaging.
+    Overload of `AbstractTransfer` that transfers weights by closest point on surface.
     """
 
     # region Dunderscores
-    __slots__ = ('_triMesh', '_faceIndices',)
+    __slots__ = ('_faceIndices',)
+    __title__ = 'Point on Surface'
 
     def __init__(self, *args, **kwargs):
         """
-        Inherited method called after a new instance has been created.
+        Private method called after a new instance has been created.
+
+        :type args: Union[Tuple[fnskin.FnSkin], Tuple[fnskin.FnSkin, List[int]]]
+        :rtype: None
         """
 
         # Call parent method
         #
         super(PointOnSurface, self).__init__(*args, **kwargs)
 
-        # Convert vertex indices to polygons
+        # Declare private variables
         #
-        self._triMesh = fnmesh.FnMesh(self.mesh.triMesh())
-        self._faceIndices = set(self.mesh.iterConnectedFaces(*self.vertexIndices))
+        self._faceIndices = set(self.mesh.iterConnectedFaces(*self.vertexIndices, componentType=self.mesh.ComponentType.Vertex))
     # endregion
 
     # region Properties
-    @property
-    def triMesh(self):
-        """
-        Getter method that returns the tri-mesh function set.
-
-        :rtype: fnmesh.FnMesh
-        """
-
-        return self._triMesh
-
     @property
     def faceIndices(self):
         """
@@ -61,21 +51,34 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
         Transfers the weights from this object to the supplied skin.
 
         :type otherSkin: fnskin.FnSkin
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :rtype: None
         """
 
         # Assign mesh to function set
         #
         points = otherSkin.controlPoints(*vertexIndices)
-        hits = self.mesh.closestPointsOnSurface(points, faceIndices=self._faceIndices)
+        hits = self.mesh.closestPointOnSurface(*points, dataset=self.faceIndices)
 
         updates = {}
 
         for (vertexIndex, hit) in zip(vertexIndices, hits):
 
-            triangleVertexIndices = self.triMesh.faceVertexIndices(hit.hitIndex)[0]
-            updates[vertexIndex] = self.skin.barycentricWeights(triangleVertexIndices, hit.hitBary)
+            # Evaluate which operation to perform
+            #
+            numFaceVertices = len(self.mesh.getFaceVertexIndices(hit.faceIndex)[0])
+
+            if numFaceVertices == 3:
+
+                updates[vertexIndex] = self.skin.barycentricWeights(hit.triangleVertexIndices, hit.baryCoords)
+
+            elif numFaceVertices == 4:
+
+                updates[vertexIndex] = self.skin.bilinearWeights(hit.faceVertexIndices, hit.biCoords)
+
+            else:
+
+                raise TypeError('transfer() expects 3-4 verts per face (%s found)!' % numFaceVertices)
 
         # Remap source weights to target
         #

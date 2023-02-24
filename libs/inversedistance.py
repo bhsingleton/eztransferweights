@@ -1,7 +1,5 @@
-import math
-
 from itertools import chain
-from eztransferweights.abstract import abstracttransfer
+from . import abstracttransfer
 
 import logging
 logging.basicConfig()
@@ -11,15 +9,19 @@ log.setLevel(logging.INFO)
 
 class InverseDistance(abstracttransfer.AbstractTransfer):
     """
-    Overload of TransferWeights used to turn geometry into a point cloud.
-    This data is then used for inverse distance transfer.
+    Overload of `AbstractTransfer` that transfers weights via inverse distance.
     """
 
-    __slots__ = ('points',)
+    # region Dunderscores
+    __slots__ = ('_vertexPoints',)
+    __title__ = 'Inverse Distance'
 
     def __init__(self, *args, **kwargs):
         """
-        Overloaded method called after a new instance has been created.
+        Private method called after a new instance has been created.
+
+        :type args: Union[Tuple[fnskin.FnSkin], Tuple[fnskin.FnSkin, List[int]]]
+        :rtype: None
         """
 
         # Call parent method
@@ -28,26 +30,28 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
 
         # Declare private variables
         #
-        self.points = self.skin.controlPoints()
+        self._vertexPoints = self.skin.controlPoints()
+    # endregion
 
-    @staticmethod
-    def distanceBetween(point, otherPoint):
+    # region Properties
+    @property
+    def vertexPoints(self):
         """
-        Evaluates the distance between two points.
+        Getter method that returns the vertex points.
 
-        :type point: list[float, float, float]
-        :type otherPoint: list[float, float, float]
-        :rtype: float
+        :rtype: List[vector.Vector]
         """
 
-        return math.sqrt(math.pow(otherPoint[0] - point[0], 2.0) + math.pow(otherPoint[1] - point[1], 2.0) + math.pow(otherPoint[2] - point[2], 2.0))
+        return self._vertexPoints
+    # endregion
 
+    # region Methods
     def transfer(self, otherSkin, vertexIndices):
         """
         Transfers the weights from this object to the supplied skin.
 
         :type otherSkin: fnskin.FnSkin
-        :type vertexIndices: list[int]
+        :type vertexIndices: List[int]
         :rtype: None
         """
 
@@ -59,11 +63,10 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         for vertexIndex in vertexIndices:
 
             point = points[vertexIndex]
+            vertexWeights = self.skin.vertexWeights(*self.vertexIndices)
+            distances = [point.distanceBetween(self.vertexPoints[x]) for x in self.vertexIndices]
 
-            vertices = self.skin.vertexWeights(*self.vertexIndices)
-            distances = [self.distanceBetween(point, self.points[x]) for x in self.vertexIndices]
-
-            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertices, distances)
+            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertexWeights, distances)
 
         # Remap source weights to target
         #
@@ -74,3 +77,4 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         otherSkin.applyVertexWeights(updates)
 
         log.info('Finished transferring weights via inverse distance!')
+    # endregion

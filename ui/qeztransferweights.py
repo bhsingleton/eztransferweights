@@ -2,7 +2,7 @@ from Qt import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnscene, fnnode, fnskin
 from dcc.ui import quicwindow
-from .methods import pointcloud, inversedistance, pointonsurface
+from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap
 
 import logging
 logging.basicConfig()
@@ -36,11 +36,11 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         #
         self._scene = fnscene.FnScene()
         self._clipboard = []
-
         self._methods = [
-            pointcloud.PointCloud,
+            closestpoint.ClosestPoint,
             inversedistance.InverseDistance,
-            pointonsurface.PointOnSurface
+            pointonsurface.PointOnSurface,
+            skinwrap.SkinWrap
         ]
     # endregion
 
@@ -67,13 +67,19 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
-    def postLoad(self):
+    def postLoad(self, *args, **kwargs):
         """
         Called after the user interface has been loaded.
 
         :rtype: None
         """
 
+        # Call parent method
+        #
+        super(QEzTransferWeights, self).postLoad(*args, **kwargs)
+
+        # Initialize clipboard widget
+        #
         horizontalHeader = self.clipboardTableWidget.horizontalHeader()  # type: QtWidgets.QHeaderView
         horizontalHeader.setStretchLastSection(False)
         horizontalHeader.resizeSection(2, 24)
@@ -271,7 +277,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
             # Create item from influence name
             #
-            influenceName = influences(influenceId).name()
+            influenceName = influences[influenceId].name()
 
             item = self.createListWidgetItem(influenceName)
             self.influenceListWidget.addItem(item)
