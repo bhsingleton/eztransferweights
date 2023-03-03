@@ -113,12 +113,13 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         return adjustedWeight
 
-    def initializeControlPoint(self, vertexIndex, otherMesh):
+    def initializeControlPoint(self, vertexIndex, otherMesh, dataset=None):
         """
         Initializes the control point for the specified vertex.
 
         :type vertexIndex: int
         :type otherMesh: fnmesh.FnMesh
+        :type dataset: Union[List[int], None]
         :rtype: ControlPoint
         """
 
@@ -152,7 +153,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         # Collect vertices that are within range
         #
         vertexPoint = self.mesh.getVertices(vertexIndex, worldSpace=True)[0]
-        closestIndices = otherMesh.closestVerticesInRange([vertexPoint], radius)[0]
+        closestIndices = otherMesh.closestVerticesInRange([vertexPoint], radius, dataset=dataset)[0]
 
         # Compute weights for vertices
         #
@@ -180,7 +181,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         for (i, vertexIndex) in enumerate(self.vertexIndices):
 
-            self._controlPoints[i] = self.initializeControlPoint(vertexIndex, otherMesh)
+            self._controlPoints[i] = self.initializeControlPoint(vertexIndex, otherMesh, dataset=vertexIndices)
 
         # Compute skin weights from control points
         #
