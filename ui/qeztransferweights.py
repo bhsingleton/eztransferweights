@@ -15,7 +15,7 @@ ClipboardItem = namedtuple('ClipboardItem', ('skin', 'selection'))
 
 class QEzTransferWeights(quicwindow.QUicWindow):
     """
-    Overload of QUicWindow used for transferring skin weights between different meshes.
+    Overload of `QUicWindow` that transfers skin weights between different meshes.
     """
 
     # region Dunderscores
@@ -42,6 +42,23 @@ class QEzTransferWeights(quicwindow.QUicWindow):
             pointonsurface.PointOnSurface,
             skinwrap.SkinWrap
         ]
+
+        # Declare public variables
+        #
+        self.mainSplitter = None
+        self.clipboardGroupBox = None
+        self.clipboardTableWidget = None
+        self.methodWidget = None
+        self.methodLabel = None
+        self.methodComboBox = None
+
+        self.influenceGroupBox = None
+        self.influenceListWidget = None
+
+        self.createPushButton = None
+        self.buttonsWidet = None
+        self.extractPushButton = None
+        self.transferPushButton = None
     # endregion
 
     # region Properties
