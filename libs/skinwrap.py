@@ -1,5 +1,6 @@
 import math
 
+from scipy.spatial import cKDTree
 from dataclasses import dataclass, field
 from typing import List
 from itertools import chain
@@ -52,10 +53,10 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         # Declare private variables
         #
-        self._falloff = kwargs.get('falloff', 0.0)
-        self._distanceInfluence = kwargs.get('distanceInfluence', 1.2)
-        self._faceLimit = kwargs.get('faceLimit', 3)
-        self._controlPoints = []
+        self._falloff = kwargs.get('falloff', 0.0)  # type: float
+        self._distanceInfluence = kwargs.get('distanceInfluence', 1.2)  # type: float
+        self._faceLimit = kwargs.get('faceLimit', 3)  # type: int
+        self._controlPoints = []  # type: List[ControlPoint]
     # endregion
 
     # region Properties
@@ -132,7 +133,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
             connectedIndices = self.mesh.getConnectedFaces(*faceIndices)
             faceIndices.update(set(connectedIndices))
 
-        # Convert faces to edges
+        # First, convert connected faces to edges
         # Next, average the length of those face-edges
         # Finally, multiply the averaged length by our distance multiplier
         #
@@ -150,7 +151,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         radius = (distance / edgeCount) * self.distanceInfluence
 
-        # Collect vertices that are within range
+        # Collect vertices that are within sphere of influence
         #
         vertexPoint = self.mesh.getVertices(vertexIndex, worldSpace=True)[0]
         closestIndices = otherMesh.closestVerticesInRange([vertexPoint], radius, dataset=dataset)[0]
@@ -162,6 +163,32 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         vertexWeights = [self.computeWeight(distance, radius) for distance in distances]
 
         return ControlPoint(index=vertexIndex, point=vertexPoint, radius=radius, vertexIndices=closestIndices, vertexWeights=vertexWeights)
+
+    def closestVertexWeights(self, otherSkin, vertexIndices):
+        """
+        Returns the weights that are closest to the supplied skin and vertex indices.
+
+        :type otherSkin: fnskin.FnSkin
+        :type vertexIndices: List[int]
+        :rtype: Dict[int, Dict[int, float]]
+        """
+
+        # Get the closest points from the point tree
+        #
+        points = otherSkin.controlPoints(*vertexIndices)
+        pointTree = cKDTree(self.skin.controlPoints(*self.vertexIndices))
+
+        distances, closestIndices = pointTree.query(points)
+
+        # Get associated vertex weights
+        # Remember we have to convert our local indices back to global!
+        #
+        closestVertexIndices = [self.vertexMap[x] for x in closestIndices]
+        closestVertexWeights = self.skin.vertexWeights(*closestVertexIndices)
+
+        updates = {vertexIndex: closestVertexWeights[closestVertexIndex] for (vertexIndex, closestVertexIndex) in zip(vertexIndices, closestVertexIndices)}
+
+        return updates
 
     def transfer(self, otherSkin, vertexIndices):
         """
@@ -212,6 +239,16 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         # Normalize weights
         #
         updates = {vertexIndex: self.skin.normalizeWeights(vertexWeights) for (vertexIndex, vertexWeights) in updates.items()}
+
+        # Ensure all vertices are weighted
+        #
+        missing = [vertexIndex for vertexIndex in vertexIndices if updates.get(vertexIndex, None) is None]
+        numMissing = len(missing)
+
+        if numMissing > 0:
+
+            closestVertexWeights = self.closestVertexWeights(otherSkin, missing)
+            updates.update(closestVertexWeights)
 
         # Remap source weights to target
         #

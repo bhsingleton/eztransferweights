@@ -1,6 +1,6 @@
 from Qt import QtCore, QtWidgets, QtGui
 from collections import namedtuple
-from dcc import fnscene, fnnode, fnskin
+from dcc import fnscene, fnnode, fnmesh, fnskin
 from dcc.ui import quicwindow
 from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap
 
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-ClipboardItem = namedtuple('ClipboardItem', ('skin', 'selection'))
+ClipboardItem = namedtuple('ClipboardItem', ('skin', 'influences', 'selection'))
 
 
 class QEzTransferWeights(quicwindow.QUicWindow):
@@ -148,7 +148,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         """
         Returns the current clipboard item.
 
-        :rtype: ClipboardItem
+        :rtype: Union[ClipboardItem, None]
         """
 
         row = self.currentRow()
@@ -217,16 +217,23 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
             vertexIndices = skin.vertices()
 
+        # Get used influence names
+        #
+        influences = skin.influences()
+        usedInfluenceIds = skin.getUsedInfluenceIds(*vertexIndices)
+
+        usedInfluences = {influenceId: influences[influenceId].name() for influenceId in usedInfluenceIds}
+
         # Define clipboard item
         #
-        clipboardItem = ClipboardItem(skin=skin, selection=vertexIndices)
+        clipboardItem = ClipboardItem(skin=skin, selection=vertexIndices, influences=usedInfluences)
         self._clipboard.append(clipboardItem)
 
         # Create standard items
         #
-        fnShape = fnnode.FnNode(skin.shape())
+        shape = fnnode.FnNode(skin.shape())
 
-        item1 = self.createTableWidgetItem(fnShape.name())
+        item1 = self.createTableWidgetItem(shape.name())
         item2 = self.createTableWidgetItem(str(len(vertexIndices)))
 
         item3 = QtWidgets.QPushButton(QtGui.QIcon(':dcc/icons/delete.svg'), '')
@@ -271,31 +278,27 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        # Clear all existing rows
-        #
-        self.influenceListWidget.clear()
-
         # Get current clipboard item
         #
         clipboardItem = self.currentClipboardItem()
+        self.influenceListWidget.clear()
 
         if clipboardItem is None:
 
             return
 
+        # Check if clipboard item is still valid
+        #
+        if not clipboardItem.skin.isValid():
+
+            return
+
         # Collect used influences
         #
-        skin = clipboardItem.skin
-
-        influences = skin.influences()
-        usedInfluenceIds = skin.getUsedInfluenceIds(*clipboardItem.selection)
-
-        for influenceId in usedInfluenceIds:
+        for (influenceId, influenceName) in clipboardItem.influences.items():
 
             # Create item from influence name
             #
-            influenceName = influences[influenceId].name()
-
             item = self.createListWidgetItem(influenceName)
             self.influenceListWidget.addItem(item)
 
@@ -342,7 +345,47 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         :rtype: None
         """
 
-        log.info('Coming soon!')
+        # Evaluate active selection
+        #
+        selection = self.scene.getActiveSelection()
+        selectionCount = len(selection)
+
+        if selectionCount == 0:
+
+            log.warning('Invalid selection!')
+            return
+
+        # Get selected clipboard item
+        #
+        clipboardItem = self.currentClipboardItem()
+
+        if clipboardItem is None:
+
+            log.warning('Invalid clipboard selection!')
+            return
+
+        # Check if mesh is already skinned
+        #
+        mesh = selection[0]
+
+        skin = fnskin.FnSkin()
+        success = skin.trySetObject(mesh)
+
+        if not success:
+
+            # Create new skin
+            #
+            skin = fnskin.FnSkin.create(mesh)
+            skin.addInfluence(*list(clipboardItem.influences.values()))
+
+            # Transfer weights to new skin
+            #
+            instance = closestpoint.ClosestPoint(clipboardItem.skin, clipboardItem.selection)
+            instance.transfer(skin, skin.vertices())
+
+        else:
+
+            log.warning('Mesh already has a skin!')
 
     @QtCore.Slot(bool)
     def on_extractPushButton_clicked(self, checked=False):
@@ -404,7 +447,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         if clipboardItem is None:
 
-            log.warning('Unable to apply weights using selected row!')
+            log.warning('Invalid clipboard selection!')
             return
 
         # Initialize transfer object
