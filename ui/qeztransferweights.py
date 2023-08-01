@@ -222,7 +222,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         influences = skin.influences()
         usedInfluenceIds = skin.getUsedInfluenceIds(*vertexIndices)
 
-        usedInfluences = {influenceId: influences[influenceId].name() for influenceId in usedInfluenceIds}
+        usedInfluences = {influenceId: influences[influenceId].absoluteName() for influenceId in usedInfluenceIds}
 
         # Define clipboard item
         #
@@ -376,6 +376,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
             # Create new skin
             #
             skin = fnskin.FnSkin.create(mesh)
+            skin.setMaxInfluences(clipboardItem.skin.maxInfluences())
             skin.addInfluence(*list(clipboardItem.influences.values()))
 
             # Transfer weights to new skin
@@ -385,7 +386,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         else:
 
-            log.warning('Mesh already has a skin!')
+            log.warning('Selected mesh already has a skin!')
 
     @QtCore.Slot(bool)
     def on_extractPushButton_clicked(self, checked=False):
