@@ -2,11 +2,11 @@ import math
 
 from scipy.spatial import cKDTree
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 from itertools import chain
 from collections import defaultdict
 from dcc import fnmesh
-from dcc.dataclasses import vector
+from dcc.dataclasses.vector import Vector
 from . import abstracttransfer
 
 import logging
@@ -23,7 +23,7 @@ class ControlPoint:
 
     # region Fields
     index: int = 0
-    point: vector.Vector = field(default_factory=vector.Vector)
+    point: Vector = field(default_factory=Vector)
     radius: float = 0.0
     vertexIndices: List[int] = field(default_factory=list)
     vertexWeights: List[float] = field(default_factory=list)
@@ -36,7 +36,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
     """
 
     # region Dunderscores
-    __slots__ = ('_falloff', '_distanceInfluence', '_faceLimit', '_controlPoints')
+    __slots__ = ('_falloff', '_distanceInfluence', '_faceLimit', '_controlPoints', '_otherPoints', '_otherPointTree', '_otherVertexMap')
     __title__ = 'Skin Wrap'
 
     def __init__(self, *args, **kwargs):
@@ -57,6 +57,9 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         self._distanceInfluence = kwargs.get('distanceInfluence', 1.2)  # type: float
         self._faceLimit = kwargs.get('faceLimit', 3)  # type: int
         self._controlPoints = []  # type: List[ControlPoint]
+        self._otherPoints = []  # type: List[Vector]
+        self._otherPointTree = None  # type: cKDTree
+        self._otherVertexMap = {}  # type: Dict[int, int]
     # endregion
 
     # region Properties
@@ -114,13 +117,11 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         return adjustedWeight
 
-    def initializeControlPoint(self, vertexIndex, otherMesh, dataset=None):
+    def initializeControlPoint(self, vertexIndex):
         """
         Initializes the control point for the specified vertex.
 
         :type vertexIndex: int
-        :type otherMesh: fnmesh.FnMesh
-        :type dataset: Union[List[int], None]
         :rtype: ControlPoint
         """
 
@@ -154,15 +155,16 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         # Collect vertices that are within sphere of influence
         #
         vertexPoint = self.mesh.getVertices(vertexIndex, worldSpace=True)[0]
-        closestIndices = otherMesh.closestVerticesInRange([vertexPoint], radius, dataset=dataset)[0]
+        closestIndices = self._otherPointTree.query_ball_point([vertexPoint], radius)[0]
+        vertexIndices = list(map(self._otherVertexMap.get, closestIndices))
 
         # Compute weights for vertices
         #
-        closestPoints = otherMesh.getVertices(*closestIndices, worldSpace=True)
+        closestPoints = [self._otherPoints[closestIndex] for closestIndex in closestIndices]
         distances = [vertexPoint.distanceBetween(point) for point in closestPoints]
         vertexWeights = [self.computeWeight(distance, radius) for distance in distances]
 
-        return ControlPoint(index=vertexIndex, point=vertexPoint, radius=radius, vertexIndices=closestIndices, vertexWeights=vertexWeights)
+        return ControlPoint(index=vertexIndex, point=vertexPoint, radius=radius, vertexIndices=vertexIndices, vertexWeights=vertexWeights)
 
     def closestVertexWeights(self, otherSkin, vertexIndices):
         """
@@ -202,13 +204,16 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         # Initialize control points
         #
         otherMesh = fnmesh.FnMesh(otherSkin.intermediateObject())
-        numVertices = len(self.vertexIndices)
+        self._otherPoints = otherMesh.getVertices(*vertexIndices, worldSpace=True)
+        self._otherPointTree = cKDTree(self._otherPoints)
+        self._otherVertexMap = dict(enumerate(vertexIndices))
 
-        self._controlPoints = [None] * numVertices
+        numControlPoints = len(self.vertexIndices)
+        self._controlPoints = [None] * numControlPoints
 
         for (i, vertexIndex) in enumerate(self.vertexIndices):
 
-            self._controlPoints[i] = self.initializeControlPoint(vertexIndex, otherMesh, dataset=vertexIndices)
+            self._controlPoints[i] = self.initializeControlPoint(vertexIndex)
 
         # Compute skin weights from control points
         #
