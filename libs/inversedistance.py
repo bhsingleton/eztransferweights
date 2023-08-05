@@ -13,7 +13,7 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
     """
 
     # region Dunderscores
-    __slots__ = ('_vertexPoints',)
+    __slots__ = ('_vertexPoints', '_power')
     __title__ = 'Inverse Distance'
 
     def __init__(self, *args, **kwargs):
@@ -21,6 +21,7 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         Private method called after a new instance has been created.
 
         :type args: Union[Tuple[fnskin.FnSkin], Tuple[fnskin.FnSkin, List[int]]]
+        :key power: float
         :rtype: None
         """
 
@@ -30,7 +31,8 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
 
         # Declare private variables
         #
-        self._vertexPoints = self.skin.controlPoints()
+        self._vertexPoints = self.skin.controlPoints(*self.vertexIndices)
+        self._power = kwargs.get('power', 2.0)
     # endregion
 
     # region Properties
@@ -43,6 +45,16 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         """
 
         return self._vertexPoints
+
+    @property
+    def power(self):
+        """
+        Getter method that returns the distance power.
+
+        :rtype: float
+        """
+
+        return self._power
     # endregion
 
     # region Methods
@@ -57,16 +69,15 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
 
         # Collect inverse distance weights
         #
-        points = otherSkin.controlPoints()
+        vertexPoints = otherSkin.controlPoints(*vertexIndices)
+        vertexWeights = self.skin.vertexWeights(*self.vertexIndices)
+
         updates = {}
 
-        for vertexIndex in vertexIndices:
+        for (vertexIndex, vertexPoint) in zip(vertexIndices, vertexPoints):
 
-            point = points[vertexIndex]
-            vertexWeights = self.skin.vertexWeights(*self.vertexIndices)
-            distances = [point.distanceBetween(self.vertexPoints[x]) for x in self.vertexIndices]
-
-            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertexWeights, distances)
+            distances = [vertexPoint.distanceBetween(otherPoint) for otherPoint in self.vertexPoints]
+            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertexWeights, distances, power=self.power)
 
         # Remap source weights to target
         #
