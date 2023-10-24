@@ -371,22 +371,23 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         skin = fnskin.FnSkin()
         success = skin.trySetObject(mesh)
 
-        if not success:
-
-            # Create new skin
-            #
-            skin = fnskin.FnSkin.create(mesh)
-            skin.setMaxInfluences(clipboardItem.skin.maxInfluences())
-            skin.addInfluence(*list(clipboardItem.influences.values()))
-
-            # Transfer weights to new skin
-            #
-            instance = closestpoint.ClosestPoint(clipboardItem.skin, clipboardItem.selection)
-            instance.transfer(skin, skin.vertices())
-
-        else:
+        if success:
 
             log.warning('Selected mesh already has a skin!')
+            return
+
+        # Create new skin and add influences
+        #
+        skin = fnskin.FnSkin.create(mesh)
+        skin.setMaxInfluences(clipboardItem.skin.maxInfluences())
+
+        influences = list(clipboardItem.influences.values())
+        skin.addInfluence(*influences)
+
+        # Transfer weights to new skin
+        #
+        instance = closestpoint.ClosestPoint(clipboardItem.skin, clipboardItem.selection)
+        instance.transfer(skin, skin.vertices())
 
     @QtCore.Slot(bool)
     def on_extractPushButton_clicked(self, checked=False):
