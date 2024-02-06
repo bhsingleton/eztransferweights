@@ -44,6 +44,9 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         Private method called after a new instance has been created.
 
         :type args: Union[Tuple[fnskin.FnSkin], Tuple[fnskin.FnSkin, List[int]]]
+        :key falloff: float
+        :key distanceInfluence: float
+        :key faceLimit = int
         :rtype: None
         """
 
@@ -254,25 +257,35 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         # Normalize weights
         #
-        updates = {vertexIndex: self.skin.normalizeWeights(vertexWeights) for (vertexIndex, vertexWeights) in updates.items()}
+        normalizedUpdates = {}
+
+        for (vertexIndex, vertexWeights) in updates.items():
+
+            try:
+
+                normalizedUpdates[vertexIndex] = self.skin.normalizeWeights(vertexWeights)
+
+            except TypeError:  # Reserved for zero weights!
+
+                continue
 
         # Ensure all vertices are weighted
         #
-        missing = [vertexIndex for vertexIndex in vertexIndices if updates.get(vertexIndex, None) is None]
+        missing = [vertexIndex for vertexIndex in vertexIndices if normalizedUpdates.get(vertexIndex, None) is None]
         numMissing = len(missing)
 
         if numMissing > 0:
 
             closestVertexWeights = self.closestVertexWeights(otherSkin, missing)
-            updates.update(closestVertexWeights)
+            normalizedUpdates.update(closestVertexWeights)
 
         # Remap source weights to target
         #
-        influenceIds = set(chain(*[list(x.keys()) for x in updates.values()]))
+        influenceIds = set(chain(*[list(x.keys()) for x in normalizedUpdates.values()]))
         influenceMap = self.skin.createInfluenceMap(otherSkin, influenceIds=influenceIds)
 
-        updates = self.skin.remapVertexWeights(updates, influenceMap)
-        otherSkin.applyVertexWeights(updates)
+        normalizedUpdates = self.skin.remapVertexWeights(normalizedUpdates, influenceMap)
+        otherSkin.applyVertexWeights(normalizedUpdates)
 
         log.info('Finished transferring weights via skin wrap!')
     # endregion

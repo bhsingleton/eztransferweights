@@ -35,6 +35,9 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         # Declare private variables
         #
         self._scene = fnscene.FnScene()
+        self._faceLimit = 3
+        self._distanceInfluence = 1.2
+        self._falloff = 0
         self._clipboard = []
         self._methods = [
             closestpoint.ClosestPoint,
@@ -53,6 +56,11 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         self.methodWidget = None
         self.methodLabel = None
         self.methodComboBox = None
+        self.settingsToolButton = None
+        self.settingsMenu = None
+        self.faceLimitAction = None
+        self.distanceInfluenceAction = None
+        self.falloffAction = None
 
         self.influenceGroupBox = None
         self.influenceListWidget = None
@@ -112,6 +120,27 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         verticalHeader = self.clipboardTableWidget.verticalHeader()  # type: QtWidgets.QHeaderView
         verticalHeader.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
         verticalHeader.setDefaultSectionSize(24)
+
+        # Initialize settings menu
+        #
+        self.settingsMenu = QtWidgets.QMenu(parent=self.settingsToolButton)
+        self.settingsMenu.setObjectName('settingsMenu')
+
+        self.faceLimitAction = QtWidgets.QAction('Set Face Limit', parent=self.settingsMenu)
+        self.faceLimitAction.setObjectName('faceLimitAction')
+        self.faceLimitAction.triggered.connect(self.on_faceLimitAction_triggered)
+
+        self.distanceInfluenceAction = QtWidgets.QAction('Set Distance Multiplier', parent=self.settingsMenu)
+        self.distanceInfluenceAction.setObjectName('distanceInfluenceAction')
+        self.distanceInfluenceAction.triggered.connect(self.on_distanceInfluenceAction_triggered)
+
+        self.falloffAction = QtWidgets.QAction('Set Falloff', parent=self.settingsMenu)
+        self.falloffAction.setObjectName('falloffAction')
+        self.falloffAction.triggered.connect(self.on_falloffAction_triggered)
+
+        self.settingsMenu.addActions([self.faceLimitAction, self.distanceInfluenceAction, self.falloffAction])
+
+        self.settingsToolButton.setMenu(self.settingsMenu)
 
     def createTableWidgetItem(self, text):
         """
@@ -317,9 +346,78 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
     # region Slots
     @QtCore.Slot(bool)
+    def on_faceLimitAction_triggered(self, checked=False):
+        """
+        Slot method for the `faceLimitAction` widget's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        faceLimit, success = QtWidgets.QInputDialog.getInt(
+            self,
+            'Set Face Limit',
+            'Enter face limit:',
+            value=self._faceLimit,
+            minValue=0,
+            maxValue=30,
+            step=1
+        )
+
+        if success:
+
+            self._faceLimit = faceLimit
+
+    @QtCore.Slot(bool)
+    def on_distanceInfluenceAction_triggered(self, checked=False):
+        """
+        Slot method for the `distanceInfluenceAction` widget's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        distanceInfluence, success = QtWidgets.QInputDialog.getDouble(
+            self,
+            'Set Distance Multiplier',
+            'Enter distance multiplier:',
+            self._distanceInfluence,
+            minValue=0.001,
+            maxValue=10.0,
+            step=0.1
+        )
+
+        if success:
+
+            self._distanceInfluence = distanceInfluence
+
+    @QtCore.Slot(bool)
+    def on_falloffAction_triggered(self, checked=False):
+        """
+        Slot method for the `falloffAction` widget's `triggered` signal.
+
+        :type checked: bool
+        :rtype: None
+        """
+
+        falloff, success = QtWidgets.QInputDialog.getDouble(
+            self,
+            'Set Falloff',
+            'Enter falloff:',
+            self._falloff,
+            minValue=0.0,
+            maxValue=10.0,
+            step=0.1
+        )
+
+        if success:
+
+            self._falloff = falloff
+
+    @QtCore.Slot(bool)
     def on_deletePushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for deleting the associated row.
+        Slot method for the `deletePushButton` widget's `clicked` signal.
 
         :type checked: bool
         :rtype: None
@@ -337,7 +435,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     @QtCore.Slot()
     def on_clipboardTableWidget_itemSelectionChanged(self):
         """
-        Item selection changed slot method responsible for invalidating the influence list.
+        Slot method for the `clipboardTableWidget` widget's `itemSelectionChanged` signal.
 
         :rtype: None
         """
@@ -347,7 +445,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_createPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for creating a skin deformer from the current influences.
+        Slot method for the `createPushButton` widget's `clicked` signal.
 
         :type checked: bool
         :rtype: None
@@ -400,7 +498,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_extractPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for extracting skin weights from the active selection.
+        Slot method for the `extractPushButton` widget's `clicked` signal.
 
         :type checked: bool
         :rtype: None
@@ -426,7 +524,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     @QtCore.Slot(bool)
     def on_transferPushButton_clicked(self, checked=False):
         """
-        Clicked slot method responsible for applying the selected weights to the active selection.
+        Slot method for the `transferPushButton` widget's `clicked` signal.
 
         :type checked: bool
         :rtype: None
@@ -465,7 +563,13 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         currentMethod = self.currentMethod()
         cls = self._methods[currentMethod]
 
-        instance = cls(clipboardItem.skin, clipboardItem.selection)
+        instance = cls(
+            clipboardItem.skin,
+            clipboardItem.selection,
+            faceLimit=self._faceLimit,
+            distanceInfluence=self._distanceInfluence,
+            falloff=self._falloff
+        )
 
         # Execute transfer
         #
