@@ -58,27 +58,37 @@ class ClosestPoint(abstracttransfer.AbstractTransfer):
     # endregion
 
     # region Methods
-    def transfer(self, otherSkin, vertexIndices):
+    def transfer(self, otherSkin, vertexIndices, notify=None):
         """
         Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]
+        :type notify: Union[Callable, None]
         :rtype: None
         """
 
         # Get the closest points from the point tree
         #
-        points = otherSkin.controlPoints(*vertexIndices)
-        distances, closestIndices = self.pointTree.query(points)
+        vertexPoints = otherSkin.controlPoints(*vertexIndices)
+        updates = {}
 
-        # Get associated vertex weights
-        # Remember we have to convert our local indices back to global!
-        #
-        closestVertexIndices = [self.vertexMap[x] for x in closestIndices]
-        closestVertices = self.skin.vertexWeights(*closestVertexIndices)
+        for (progress, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
 
-        updates = {vertexIndex: closestVertices[closestVertexIndex] for (vertexIndex, closestVertexIndex) in zip(vertexIndices, closestVertexIndices)}
+            # Calculate closest vertex
+            #
+            closestDistances, closestIndices = self.pointTree.query([vertexPoint])
+            closestIndex = self.vertexMap[closestIndices[0]]
+            closestWeights = self.skin.vertexWeights(closestIndex)
+
+            log.debug(f'.vertex[{vertexIndex}] == .vertex[{closestIndex}]')
+            updates[vertexIndex] = closestWeights[closestIndex]
+
+            # Signal progress update
+            #
+            if callable(notify):
+
+                notify(progress)
 
         # Remap source weights to target
         #

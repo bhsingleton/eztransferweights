@@ -46,12 +46,13 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
     # endregion
 
     # region Methods
-    def transfer(self, otherSkin, vertexIndices):
+    def transfer(self, otherSkin, vertexIndices, notify=None):
         """
-        Transfers the weights from this object to the supplied skin.
+        Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]
+        :type notify: Union[Callable, None]
         :rtype: None
         """
 
@@ -62,23 +63,27 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         updates = {}
 
-        for (vertexIndex, hit) in zip(vertexIndices, hits):
+        for (progress, (vertexIndex, hit)) in enumerate(zip(vertexIndices, hits), start=1):
 
-            # Evaluate which operation to perform
+            # Decompose hit result
             #
-            numFaceVertices = len(self.mesh.getFaceVertexIndices(hit.faceIndex)[0])
+            faceVertexIndices = hit.faceVertexIndices
 
-            if numFaceVertices == 3:
+            vertexPoints = self.mesh.getVertices(*faceVertexIndices, worldSpace=True)
+            vertexWeights = self.skin.vertexWeights(*faceVertexIndices)
 
-                updates[vertexIndex] = self.skin.barycentricWeights(hit.triangleVertexIndices, hit.baryCoords)
+            # Calculate inverse distance from hit
+            #
+            distances = [hit.point.distanceBetween(otherPoint) for otherPoint in vertexPoints]
+            average = self.skin.inverseDistanceWeights(vertexWeights, distances)
 
-            elif numFaceVertices == 4:
+            updates[vertexIndex] = average
 
-                updates[vertexIndex] = self.skin.bilinearWeights(hit.faceVertexIndices, hit.biCoords)
+            # Signal progress update
+            #
+            if callable(notify):
 
-            else:
-
-                raise TypeError('transfer() expects 3-4 verts per face (%s found)!' % numFaceVertices)
+                notify(progress)
 
         # Remap source weights to target
         #

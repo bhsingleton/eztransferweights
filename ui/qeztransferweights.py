@@ -45,7 +45,9 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Declare public variables
         #
+        self.mainWidget = None
         self.mainSplitter = None
+
         self.clipboardGroupBox = None
         self.clipboardTableWidget = None
         self.methodWidget = None
@@ -54,11 +56,13 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         self.influenceGroupBox = None
         self.influenceListWidget = None
-
         self.createPushButton = None
-        self.buttonsWidet = None
+
+        self.buttonsWidget = None
         self.extractPushButton = None
         self.transferPushButton = None
+
+        self.progressBar = None
     # endregion
 
     # region Properties
@@ -305,6 +309,10 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         # Set selection to first item
         #
         self.influenceListWidget.setCurrentRow(0)
+
+    def updateProgressBar(self, progress):
+
+        self.progressBar.setValue(progress)
     # endregion
 
     # region Slots
@@ -452,11 +460,18 @@ class QEzTransferWeights(quicwindow.QUicWindow):
             log.warning('Invalid clipboard selection!')
             return
 
-        # Initialize transfer object
+        # Initialize transfer interface
         #
         currentMethod = self.currentMethod()
         cls = self._methods[currentMethod]
 
         instance = cls(clipboardItem.skin, clipboardItem.selection)
-        return instance.transfer(otherSkin, otherSkin.selection())
+
+        # Execute transfer
+        #
+        otherSelection = otherSkin.selection()
+        otherSelectionCount = len(otherSelection)
+        self.progressBar.setMaximum(otherSelectionCount)
+
+        instance.transfer(otherSkin, otherSkin.selection(), notify=self.updateProgressBar)
     # endregion

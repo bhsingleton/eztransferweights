@@ -58,12 +58,13 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
     # endregion
 
     # region Methods
-    def transfer(self, otherSkin, vertexIndices):
+    def transfer(self, otherSkin, vertexIndices, notify=None):
         """
-        Transfers the weights from this object to the supplied skin.
+        Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]
+        :type notify: Union[Callable, None]
         :rtype: None
         """
 
@@ -74,10 +75,20 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
 
         updates = {}
 
-        for (vertexIndex, vertexPoint) in zip(vertexIndices, vertexPoints):
+        for (progress, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
 
+            # Calculate inverse distance
+            #
             distances = [vertexPoint.distanceBetween(otherPoint) for otherPoint in self.vertexPoints]
-            updates[vertexIndex] = self.skin.inverseDistanceWeights(vertexWeights, distances, power=self.power)
+            average = self.skin.inverseDistanceWeights(vertexWeights, distances, power=self.power)
+
+            updates[vertexIndex] = average
+
+            # Signal progress update
+            #
+            if callable(notify):
+
+                notify(progress)
 
         # Remap source weights to target
         #

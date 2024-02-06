@@ -192,12 +192,13 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         return updates
 
-    def transfer(self, otherSkin, vertexIndices):
+    def transfer(self, otherSkin, vertexIndices, notify=None):
         """
-        Transfers the weights from this object to the supplied skin.
+        Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]
+        :type notify: Union[Callable, None]
         :rtype: None
         """
 
@@ -217,9 +218,12 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         # Compute skin weights from control points
         #
+        numVertices = len(vertexIndices)
+        progressFactor = float(numVertices) / float(numControlPoints)
+
         updates = {}
 
-        for controlPoint in self._controlPoints:
+        for (i, controlPoint) in enumerate(self._controlPoints, start=1):
 
             # Iterate through affected vertices
             #
@@ -240,6 +244,13 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
                 for (influenceId, influenceWeight) in vertexWeights[controlPoint.index].items():
 
                     updates[vertexIndex][influenceId] += influenceWeight * vertexWeight
+
+            # Signal progress update
+            #
+            if callable(notify):
+
+                progress = int(math.ceil(float(i) * progressFactor))
+                notify(progress)
 
         # Normalize weights
         #

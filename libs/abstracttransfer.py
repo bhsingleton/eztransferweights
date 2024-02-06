@@ -152,12 +152,13 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
 
     # region Methods
     @abstractmethod
-    def transfer(self, otherSkin, vertexIndices):
+    def transfer(self, otherSkin, vertexIndices, notify=None):
         """
         Transfers the weights from this skin to the other skin.
 
         :type otherSkin: fnskin.FnSkin
         :type vertexIndices: List[int]
+        :type notify: Union[Callable, None]
         :rtype: None
         """
 
