@@ -573,9 +573,5 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
         # Execute transfer
         #
-        otherSelection = otherSkin.selection()
-        otherSelectionCount = len(otherSelection)
-        self.progressBar.setMaximum(otherSelectionCount)
-
         instance.transfer(otherSkin, otherSkin.selection(), notify=self.updateProgressBar)
     # endregion

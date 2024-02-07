@@ -1,3 +1,5 @@
+import math
+
 from itertools import chain
 from . import abstracttransfer
 
@@ -72,10 +74,11 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
         #
         vertexPoints = otherSkin.controlPoints(*vertexIndices)
         vertexWeights = self.skin.vertexWeights(*self.vertexIndices)
+        progressFactor = 100.0 / float(len(vertexIndices))
 
         updates = {}
 
-        for (progress, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
+        for (i, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
 
             # Calculate inverse distance
             #
@@ -88,6 +91,7 @@ class InverseDistance(abstracttransfer.AbstractTransfer):
             #
             if callable(notify):
 
+                progress = int(math.ceil(float(i) * progressFactor))
                 notify(progress)
 
         # Remap source weights to target

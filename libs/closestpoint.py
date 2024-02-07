@@ -1,5 +1,7 @@
-from scipy.spatial import cKDTree
+import math
+
 from itertools import chain
+from scipy.spatial import cKDTree
 from . import abstracttransfer
 
 import logging
@@ -71,9 +73,11 @@ class ClosestPoint(abstracttransfer.AbstractTransfer):
         # Get the closest points from the point tree
         #
         vertexPoints = otherSkin.controlPoints(*vertexIndices)
+        progressFactor = 100.0 / float(len(vertexIndices))
+
         updates = {}
 
-        for (progress, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
+        for (i, (vertexIndex, vertexPoint)) in enumerate(zip(vertexIndices, vertexPoints), start=1):
 
             # Calculate closest vertex
             #
@@ -81,13 +85,13 @@ class ClosestPoint(abstracttransfer.AbstractTransfer):
             closestIndex = self.vertexMap[closestIndices[0]]
             closestWeights = self.skin.vertexWeights(closestIndex)
 
-            log.debug(f'.vertex[{vertexIndex}] == .vertex[{closestIndex}]')
             updates[vertexIndex] = closestWeights[closestIndex]
 
             # Signal progress update
             #
             if callable(notify):
 
+                progress = int(math.ceil(float(i) * progressFactor))
                 notify(progress)
 
         # Remap source weights to target

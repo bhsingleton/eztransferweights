@@ -1,3 +1,5 @@
+import math
+
 from itertools import chain
 from . import abstracttransfer
 
@@ -60,10 +62,11 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
         #
         points = otherSkin.controlPoints(*vertexIndices)
         hits = self.mesh.closestPointOnSurface(*points, dataset=self.faceIndices)
+        progressFactor = 100.0 / float(len(vertexIndices))
 
         updates = {}
 
-        for (progress, (vertexIndex, hit)) in enumerate(zip(vertexIndices, hits), start=1):
+        for (i, (vertexIndex, hit)) in enumerate(zip(vertexIndices, hits), start=1):
 
             # Decompose hit result
             #
@@ -83,6 +86,7 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
             #
             if callable(notify):
 
+                progress = int(math.ceil(float(i) * progressFactor))
                 notify(progress)
 
         # Remap source weights to target

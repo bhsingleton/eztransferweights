@@ -1,10 +1,10 @@
 import math
 
-from scipy.spatial import cKDTree
 from dataclasses import dataclass, field
 from typing import List, Dict
 from itertools import chain
 from collections import defaultdict
+from scipy.spatial import cKDTree
 from dcc import fnmesh
 from dcc.dataclasses.vector import Vector
 from . import abstracttransfer
@@ -215,15 +215,23 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         numControlPoints = len(self.vertexIndices)
         self._controlPoints = [None] * numControlPoints
 
+        progressFactor = 100.0 / float(numControlPoints)
+
         for (i, vertexIndex) in enumerate(self.vertexIndices):
 
+            # Initialize control point
+            #
             self._controlPoints[i] = self.initializeControlPoint(vertexIndex)
+
+            # Signal progress update
+            #
+            if callable(notify):
+
+                progress = int(math.ceil((float(i + 1) * progressFactor)) * 0.5)
+                notify(progress)
 
         # Compute skin weights from control points
         #
-        numVertices = len(vertexIndices)
-        progressFactor = float(numVertices) / float(numControlPoints)
-
         updates = {}
 
         for (i, controlPoint) in enumerate(self._controlPoints, start=1):
@@ -252,7 +260,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
             #
             if callable(notify):
 
-                progress = int(math.ceil(float(i) * progressFactor))
+                progress = 50 + int(math.ceil((float(i + 1) * progressFactor)) * 0.5)
                 notify(progress)
 
         # Normalize weights
