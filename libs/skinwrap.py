@@ -227,7 +227,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
             #
             if callable(notify):
 
-                progress = int(math.ceil((float(i + 1) * progressFactor)) * 0.5)
+                progress = int(math.ceil((float(i + 1) * progressFactor * 0.5)))
                 notify(progress)
 
         # Compute skin weights from control points
@@ -260,7 +260,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
             #
             if callable(notify):
 
-                progress = 50 + int(math.ceil((float(i + 1) * progressFactor)) * 0.5)
+                progress = 50 + int(math.ceil((float(i + 1) * progressFactor * 0.5)))
                 notify(progress)
 
         # Normalize weights
