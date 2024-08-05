@@ -2,7 +2,7 @@ from Qt import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnscene, fnnode, fnmesh, fnskin
 from dcc.ui import qsingletonwindow
-from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap, robustinpaint
+from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap
 
 import logging
 logging.basicConfig()
@@ -44,8 +44,7 @@ class QEzTransferWeights(qsingletonwindow.QSingletonWindow):
             closestpoint.ClosestPoint,
             inversedistance.InverseDistance,
             pointonsurface.PointOnSurface,
-            skinwrap.SkinWrap,
-            robustinpaint.RobustInpaint
+            skinwrap.SkinWrap
         ]
 
     def __setup_ui__(self, *args, **kwargs):
