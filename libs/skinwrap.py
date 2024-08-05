@@ -188,7 +188,7 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
         # Get associated vertex weights
         # Remember we have to convert our local indices back to global!
         #
-        closestVertexIndices = [self.vertexMap[x] for x in closestIndices]
+        closestVertexIndices = [self.localVertexMap[x] for x in closestIndices]
         closestVertexWeights = self.skin.vertexWeights(*closestVertexIndices)
 
         updates = {vertexIndex: closestVertexWeights[closestVertexIndex] for (vertexIndex, closestVertexIndex) in zip(vertexIndices, closestVertexIndices)}

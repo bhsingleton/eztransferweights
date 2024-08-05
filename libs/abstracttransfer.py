@@ -15,7 +15,7 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
     """
 
     # region Dunderscores
-    __slots__ = ('_mesh', '_skin', '_vertexIndices', '_vertexMap')
+    __slots__ = ('_mesh', '_skin', '_vertexIndices', '_localVertexMap', '_globalVertexMap')
     __title__ = ''
 
     def __init__(self, *args, **kwargs):
@@ -35,7 +35,8 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         self._skin = None
         self._mesh = None
         self._vertexIndices = []
-        self._vertexMap = {}
+        self._localVertexMap = {}
+        self._globalVertexMap = {}
 
         # Inspect arguments
         #
@@ -56,7 +57,8 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
             self._skin = skin
             self._mesh = fnmesh.FnMesh(self.skin.intermediateObject())
             self._vertexIndices = list(range(self.skin.numControlPoints()))
-            self._vertexMap = dict(enumerate(self._vertexIndices))
+            self._localVertexMap = dict(enumerate(self._vertexIndices))
+            self._globalVertexMap = dict(map(lambda pair: (pair[1], pair[0]), self._localVertexMap.items()))
 
         elif numArgs == 2:
 
@@ -81,11 +83,12 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
             self._skin = skin
             self._mesh = fnmesh.FnMesh(self._skin.intermediateObject())
             self._vertexIndices = vertexIndices
-            self._vertexMap = dict(enumerate(self._vertexIndices))
+            self._localVertexMap = dict(enumerate(self._vertexIndices))
+            self._globalVertexMap = dict(map(lambda pair: (pair[1], pair[0]), self._localVertexMap.items()))
 
         else:
 
-            raise TypeError('TransferWeights() expects 1 or 2 arguments (%s given)!' % numArgs)
+            raise TypeError('%s() expects 1 or 2 arguments (%s given)!' % (self.className, numArgs))
     # endregion
 
     # region Properties
@@ -140,14 +143,24 @@ class AbstractTransfer(with_metaclass(ABCMeta, object)):
         return self._vertexIndices
 
     @property
-    def vertexMap(self):
+    def localVertexMap(self):
         """
         Getter method that returns the vertex local to global map.
 
         :rtype: Dict[int, int]
         """
 
-        return self._vertexIndices
+        return self._localVertexMap
+
+    @property
+    def globalVertexMap(self):
+        """
+        Getter method that returns the vertex global to local map.
+
+        :rtype: Dict[int, int]
+        """
+
+        return self._globalVertexMap
     # endregion
 
     # region Methods

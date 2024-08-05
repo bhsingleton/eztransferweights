@@ -68,19 +68,35 @@ class PointOnSurface(abstracttransfer.AbstractTransfer):
 
         for (i, (vertexIndex, hit)) in enumerate(zip(vertexIndices, hits), start=1):
 
-            # Decompose hit result
+            # Get associated skin weights
             #
             faceVertexIndices = hit.faceVertexIndices
-
-            vertexPoints = self.mesh.getVertices(*faceVertexIndices, worldSpace=True)
             vertexWeights = self.skin.vertexWeights(*faceVertexIndices)
 
-            # Calculate inverse distance from hit
+            # Evaluate face topology
             #
-            distances = [hit.point.distanceBetween(otherPoint) for otherPoint in vertexPoints]
-            average = self.skin.inverseDistanceWeights(vertexWeights, distances)
+            numFaceVertexIndices = len(faceVertexIndices)
 
-            updates[vertexIndex] = average
+            if numFaceVertexIndices == 3:
+
+                # Calculate barycentric weights
+                #
+                updates[vertexIndex] = self.skin.barycentricWeights(faceVertexIndices, hit.baryCoords)
+
+            elif numFaceVertexIndices == 4:
+
+                # Calculate bilinear weights
+                #
+                updates[vertexIndex] = self.skin.bilinearWeights(faceVertexIndices, hit.biCoords)
+
+            else:
+
+                # Calculate inverse distance weights
+                #
+                distances = [hit.point.distanceBetween(otherPoint) for otherPoint in hit.faceVertexPoints]
+                average = self.skin.inverseDistanceWeights(vertexWeights, distances)
+
+                updates[vertexIndex] = average
 
             # Signal progress update
             #

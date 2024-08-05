@@ -1,8 +1,8 @@
 from Qt import QtCore, QtWidgets, QtGui
 from collections import namedtuple
 from dcc import fnscene, fnnode, fnmesh, fnskin
-from dcc.ui import quicwindow
-from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap
+from dcc.ui import qsingletonwindow
+from ..libs import closestpoint, inversedistance, pointonsurface, skinwrap, robustinpaint
 
 import logging
 logging.basicConfig()
@@ -13,9 +13,9 @@ log.setLevel(logging.INFO)
 ClipboardItem = namedtuple('ClipboardItem', ('skin', 'influences', 'selection'))
 
 
-class QEzTransferWeights(quicwindow.QUicWindow):
+class QEzTransferWeights(qsingletonwindow.QSingletonWindow):
     """
-    Overload of `QUicWindow` that transfers skin weights between different meshes.
+    Overload of `QSingletonWindow` that transfers skin weights between different meshes.
     """
 
     # region Dunderscores
@@ -39,38 +39,248 @@ class QEzTransferWeights(quicwindow.QUicWindow):
         self._distanceInfluence = 1.2
         self._falloff = 0
         self._clipboard = []
+
         self._methods = [
             closestpoint.ClosestPoint,
             inversedistance.InverseDistance,
             pointonsurface.PointOnSurface,
-            skinwrap.SkinWrap
+            skinwrap.SkinWrap,
+            robustinpaint.RobustInpaint
         ]
 
-        # Declare public variables
+    def __setup_ui__(self, *args, **kwargs):
+        """
+        Private method that initializes the user interface.
+
+        :rtype: None
+        """
+
+        # Call parent method
         #
-        self.mainWidget = None
-        self.mainSplitter = None
+        super(QEzTransferWeights, self).__setup_ui__(self, *args, **kwargs)
 
-        self.clipboardGroupBox = None
-        self.clipboardTableWidget = None
-        self.methodWidget = None
-        self.methodLabel = None
-        self.methodComboBox = None
-        self.settingsToolButton = None
-        self.settingsMenu = None
-        self.faceLimitAction = None
-        self.distanceInfluenceAction = None
-        self.falloffAction = None
+        # Initialize main window
+        #
+        self.setWindowTitle("|| Ez'Transfer-Weights")
+        self.setMinimumSize(QtCore.QSize(600, 300))
 
-        self.influenceGroupBox = None
-        self.influenceListWidget = None
-        self.createPushButton = None
+        # Initialize central widget
+        #
+        centralLayout = QtWidgets.QVBoxLayout()
+        centralLayout.setObjectName('centralLayout')
 
-        self.buttonsWidget = None
-        self.extractPushButton = None
-        self.transferPushButton = None
+        centralWidget = QtWidgets.QWidget()
+        centralWidget.setObjectName('centralWidget')
+        centralWidget.setLayout(centralLayout)
 
-        self.progressBar = None
+        self.setCentralWidget(centralWidget)
+
+        # Initialize transfer method widget
+        #
+        self.methodLayout = QtWidgets.QHBoxLayout()
+        self.methodLayout.setObjectName('methodLayout')
+        self.methodLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.methodWidget = QtWidgets.QWidget()
+        self.methodWidget.setObjectName('methodWidget')
+        self.methodWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.methodWidget.setFixedHeight(24)
+        self.methodWidget.setLayout(self.methodLayout)
+
+        self.methodLabel = QtWidgets.QLabel('Method:')
+        self.methodLabel.setObjectName('methodLabel')
+        self.methodLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Preferred))
+        self.methodLabel.setFixedWidth(50)
+        self.methodLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        self.methodComboBox = QtWidgets.QComboBox()
+        self.methodComboBox.setObjectName('methodLabel')
+        self.methodComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred))
+        self.methodComboBox.addItems(['Closest Point', 'Inverse Distance', 'Point on Surface', 'Skin Wrap', 'Robust Inpaint'])
+
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHeightForWidth(True)
+
+        self.settingsToolButton = QtWidgets.QToolButton()
+        self.settingsToolButton.setObjectName('settingsToolButton')
+        self.settingsToolButton.setSizePolicy(sizePolicy)
+        self.settingsToolButton.setIcon(QtGui.QIcon(':/dcc/icons/settings.svg'))
+        self.settingsToolButton.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+
+        self.methodLayout.addWidget(self.methodLabel)
+        self.methodLayout.addWidget(self.methodComboBox)
+        self.methodLayout.addWidget(self.settingsToolButton)
+
+        # Initialize settings menu
+        #
+        self.settingsMenu = QtWidgets.QMenu(parent=self.settingsToolButton)
+        self.settingsMenu.setObjectName('settingsMenu')
+
+        self.faceLimitAction = QtWidgets.QAction('Set Face Limit', parent=self.settingsMenu)
+        self.faceLimitAction.setObjectName('faceLimitAction')
+        self.faceLimitAction.triggered.connect(self.on_faceLimitAction_triggered)
+
+        self.distanceInfluenceAction = QtWidgets.QAction('Set Distance Multiplier', parent=self.settingsMenu)
+        self.distanceInfluenceAction.setObjectName('distanceInfluenceAction')
+        self.distanceInfluenceAction.triggered.connect(self.on_distanceInfluenceAction_triggered)
+
+        self.falloffAction = QtWidgets.QAction('Set Falloff', parent=self.settingsMenu)
+        self.falloffAction.setObjectName('falloffAction')
+        self.falloffAction.triggered.connect(self.on_falloffAction_triggered)
+
+        self.settingsMenu.addActions([self.faceLimitAction, self.distanceInfluenceAction, self.falloffAction])
+
+        self.settingsToolButton.setMenu(self.settingsMenu)
+
+        # Initialize clipboard widget
+        #
+        self.clipboardLayout = QtWidgets.QVBoxLayout()
+        self.clipboardLayout.setObjectName('clipboardLayout')
+        self.clipboardLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.clipboardWidget = QtWidgets.QWidget()
+        self.clipboardWidget.setObjectName('clipboardWidget')
+        self.clipboardWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.clipboardWidget.setLayout(self.clipboardLayout)
+
+        self.clipboardHeader = QtWidgets.QGroupBox('Clipboard')
+        self.clipboardHeader.setObjectName('clipboardHeader')
+        self.clipboardHeader.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.clipboardHeader.setAlignment(QtCore.Qt.AlignCenter)
+        self.clipboardHeader.setFlat(True)
+
+        self.clipboardTableWidget = QtWidgets.QTableWidget()
+        self.clipboardTableWidget.setObjectName('clipboardTableWidget')
+        self.clipboardTableWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred))
+        self.clipboardTableWidget.setStyleSheet('QTableWidget::item { height: 24px; }')
+        self.clipboardTableWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.clipboardTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.clipboardTableWidget.setAlternatingRowColors(True)
+        self.clipboardTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.clipboardTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.clipboardTableWidget.itemSelectionChanged.connect(self.on_clipboardTableWidget_itemSelectionChanged)
+
+        self.clipboardTableWidget.setColumnCount(3)
+        self.clipboardTableWidget.setHorizontalHeaderLabels(['Name', 'Points', ''])
+        horizontalHeader = self.clipboardTableWidget.horizontalHeader()  # type: QtWidgets.QHeaderView
+        horizontalHeader.setStretchLastSection(False)
+        horizontalHeader.resizeSection(2, 24)
+        horizontalHeader.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader.resizeSection(1, 100)
+        horizontalHeader.setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
+        horizontalHeader.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+
+        verticalHeader = self.clipboardTableWidget.verticalHeader()  # type: QtWidgets.QHeaderView
+        verticalHeader.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        verticalHeader.setDefaultSectionSize(24)
+
+        self.clipboardFooter = QtWidgets.QFrame()
+        self.clipboardFooter.setObjectName('clipboardFooter')
+        self.clipboardFooter.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.clipboardFooter.setFrameShape(QtWidgets.QFrame.HLine)
+        self.clipboardFooter.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        self.clipboardLayout.addWidget(self.clipboardHeader)
+        self.clipboardLayout.addWidget(self.clipboardTableWidget)
+        self.clipboardLayout.addWidget(self.methodWidget)
+        self.clipboardLayout.addWidget(self.clipboardFooter)
+
+        # Initialize influence widget
+        #
+        self.influenceLayout = QtWidgets.QVBoxLayout()
+        self.influenceLayout.setObjectName('influenceLayout')
+        self.influenceLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.influenceWidget = QtWidgets.QWidget()
+        self.influenceWidget.setObjectName('influenceWidget')
+        self.influenceWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.influenceWidget.setLayout(self.influenceLayout)
+
+        self.influenceHeader = QtWidgets.QGroupBox('Influences')
+        self.influenceHeader.setObjectName('influenceHeader')
+        self.influenceHeader.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.influenceHeader.setAlignment(QtCore.Qt.AlignCenter)
+        self.influenceHeader.setFlat(True)
+
+        self.influenceListWidget = QtWidgets.QListWidget()
+        self.influenceListWidget.setObjectName('influenceListWidget')
+        self.influenceListWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred))
+        self.influenceListWidget.setStyleSheet('QListWidget::item { height: 24px; }')
+        self.influenceListWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.influenceListWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.influenceListWidget.setAlternatingRowColors(True)
+        self.influenceListWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.influenceListWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.influenceListWidget.setViewMode(QtWidgets.QListWidget.ListMode)
+        self.influenceListWidget.setUniformItemSizes(True)
+        self.influenceListWidget.setItemAlignment(QtCore.Qt.AlignCenter)
+
+        self.createPushButton = QtWidgets.QPushButton('Create Skin')
+        self.createPushButton.setObjectName('createPushButton')
+        self.createPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.createPushButton.setFixedHeight(24)
+        self.createPushButton.clicked.connect(self.on_createPushButton_clicked)
+
+        self.influenceFooter = QtWidgets.QFrame()
+        self.influenceFooter.setObjectName('influenceFooter')
+        self.influenceFooter.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed))
+        self.influenceFooter.setFrameShape(QtWidgets.QFrame.HLine)
+        self.influenceFooter.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        self.influenceLayout.addWidget(self.influenceHeader)
+        self.influenceLayout.addWidget(self.influenceListWidget)
+        self.influenceLayout.addWidget(self.createPushButton)
+        self.influenceLayout.addWidget(self.influenceFooter)
+
+        # Initialize splitter widget
+        #
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.splitter.setObjectName('splitter')
+        self.splitter.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.splitter.addWidget(self.clipboardWidget)
+        self.splitter.addWidget(self.influenceWidget)
+
+        centralLayout.addWidget(self.splitter)
+
+        # Initialize interop widget
+        #
+        self.interopLayout = QtWidgets.QHBoxLayout()
+        self.interopLayout.setObjectName('interopLayout')
+        self.interopLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.interopWidget = QtWidgets.QWidget()
+        self.interopWidget.setObjectName('interopWidget')
+        self.interopWidget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.interopWidget.setFixedHeight(24)
+        self.interopWidget.setLayout(self.interopLayout)
+
+        self.extractPushButton = QtWidgets.QPushButton('Extract Weights')
+        self.extractPushButton.setObjectName('extractPushButton')
+        self.extractPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred))
+        self.extractPushButton.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.extractPushButton.clicked.connect(self.on_extractPushButton_clicked)
+
+        self.transferPushButton = QtWidgets.QPushButton('Transfer Weights')
+        self.transferPushButton.setObjectName('transferPushButton')
+        self.transferPushButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred))
+        self.transferPushButton.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.transferPushButton.clicked.connect(self.on_transferPushButton_clicked)
+
+        self.interopLayout.addWidget(self.extractPushButton)
+        self.interopLayout.addWidget(self.transferPushButton)
+
+        centralLayout.addWidget(self.interopWidget)
+
+        # Initialize progress bar
+        #
+        self.progressBar = QtWidgets.QProgressBar()
+        self.progressBar.setObjectName('progressBar')
+        self.progressBar.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
+        self.progressBar.setFixedHeight(24)
+        self.progressBar.setTextVisible(True)
+        self.progressBar.setValue(0.0)
+
+        centralLayout.addWidget(self.progressBar)
     # endregion
 
     # region Properties
@@ -96,58 +306,13 @@ class QEzTransferWeights(quicwindow.QUicWindow):
     # endregion
 
     # region Methods
-    def postLoad(self, *args, **kwargs):
-        """
-        Called after the user interface has been loaded.
-
-        :rtype: None
-        """
-
-        # Call parent method
-        #
-        super(QEzTransferWeights, self).postLoad(*args, **kwargs)
-
-        # Initialize clipboard widget
-        #
-        horizontalHeader = self.clipboardTableWidget.horizontalHeader()  # type: QtWidgets.QHeaderView
-        horizontalHeader.setStretchLastSection(False)
-        horizontalHeader.resizeSection(2, 24)
-        horizontalHeader.setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
-        horizontalHeader.resizeSection(1, 100)
-        horizontalHeader.setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
-        horizontalHeader.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-
-        verticalHeader = self.clipboardTableWidget.verticalHeader()  # type: QtWidgets.QHeaderView
-        verticalHeader.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        verticalHeader.setDefaultSectionSize(24)
-
-        # Initialize settings menu
-        #
-        self.settingsMenu = QtWidgets.QMenu(parent=self.settingsToolButton)
-        self.settingsMenu.setObjectName('settingsMenu')
-
-        self.faceLimitAction = QtWidgets.QAction('Set Face Limit', parent=self.settingsMenu)
-        self.faceLimitAction.setObjectName('faceLimitAction')
-        self.faceLimitAction.triggered.connect(self.on_faceLimitAction_triggered)
-
-        self.distanceInfluenceAction = QtWidgets.QAction('Set Distance Multiplier', parent=self.settingsMenu)
-        self.distanceInfluenceAction.setObjectName('distanceInfluenceAction')
-        self.distanceInfluenceAction.triggered.connect(self.on_distanceInfluenceAction_triggered)
-
-        self.falloffAction = QtWidgets.QAction('Set Falloff', parent=self.settingsMenu)
-        self.falloffAction.setObjectName('falloffAction')
-        self.falloffAction.triggered.connect(self.on_falloffAction_triggered)
-
-        self.settingsMenu.addActions([self.faceLimitAction, self.distanceInfluenceAction, self.falloffAction])
-
-        self.settingsToolButton.setMenu(self.settingsMenu)
-
     def createTableWidgetItem(self, text):
         """
-        Method used to create a table widget item from the supplied text value.
+        Returns a new table widget item with the specified text.
+        By default, the text alignment is centered!
 
         :type text: str
-        :rtype: QtGui.QStandardItem
+        :rtype: QtWidgets.QTableWidgetItem
         """
 
         item = QtWidgets.QTableWidgetItem(text)
@@ -157,10 +322,11 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
     def createListWidgetItem(self, text):
         """
-        Convenience function for quickly creating QStandardItems.
+        Returns a new list widget item with the specified text.
+        By default, the text alignment is centered!
 
         :type text: str
-        :rtype: QtGui.QStandardItem
+        :rtype: QListWidgetItem
         """
 
         item = QtWidgets.QListWidgetItem(text)
@@ -197,7 +363,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
     def currentMethod(self):
         """
-        Method used to retrieve the selected remapping algorithm.
+        Returns the selected transfer method.
 
         :rtype: int
         """
@@ -206,7 +372,7 @@ class QEzTransferWeights(quicwindow.QUicWindow):
 
     def currentRow(self):
         """
-        Method used to retrieve the selected row index.
+        Returns the selected row index.
 
         :rtype: int
         """

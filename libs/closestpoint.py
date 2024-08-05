@@ -82,7 +82,7 @@ class ClosestPoint(abstracttransfer.AbstractTransfer):
             # Calculate closest vertex
             #
             closestDistances, closestIndices = self.pointTree.query([vertexPoint])
-            closestIndex = self.vertexMap[closestIndices[0]]
+            closestIndex = self.localVertexMap[closestIndices[0]]
             closestWeights = self.skin.vertexWeights(closestIndex)
 
             updates[vertexIndex] = closestWeights[closestIndex]
