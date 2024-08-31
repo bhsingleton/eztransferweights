@@ -6,6 +6,7 @@ from itertools import chain
 from collections import defaultdict
 from scipy.spatial import cKDTree
 from dcc import fnmesh
+from dcc.math import skinmath
 from dcc.dataclasses.vector import Vector
 from . import abstracttransfer
 
@@ -265,13 +266,14 @@ class SkinWrap(abstracttransfer.AbstractTransfer):
 
         # Normalize weights
         #
+        maxInfluences = otherSkin.maxInfluences()
         normalizedUpdates = {}
 
         for (vertexIndex, vertexWeights) in updates.items():
 
             try:
 
-                normalizedUpdates[vertexIndex] = self.skin.normalizeWeights(vertexWeights)
+                normalizedUpdates[vertexIndex] = skinmath.normalizeWeights(vertexWeights, maxInfluences=maxInfluences)
 
             except TypeError:  # Reserved for zero weights!
 
