@@ -95,7 +95,7 @@ class QEzTransferWeights(qsingletonwindow.QSingletonWindow):
         self.methodComboBox = QtWidgets.QComboBox()
         self.methodComboBox.setObjectName('methodLabel')
         self.methodComboBox.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred))
-        self.methodComboBox.addItems(['Closest Point', 'Inverse Distance', 'Point on Surface', 'Skin Wrap', 'Robust Inpaint'])
+        self.methodComboBox.addItems(['Closest Point', 'Inverse Distance', 'Point on Surface', 'Skin Wrap'])
 
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHeightForWidth(True)
